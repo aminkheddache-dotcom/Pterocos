@@ -1151,9 +1151,7 @@ Respond ONLY with a JSON object in this exact format (no markdown, no explanatio
      * Blocks if any of adult/violence/racy score LIKELY or VERY_LIKELY.
      *
      * Quota resets DAILY (~1,000 free requests/day via $200 monthly credit).
-     *
-     * wp-config.php:
-     *   define( 'MLP_GOOGLE_VISION_KEY', 'AIzaSyBAOFbe0heYG-5-76eqDaFRfHIc7X655zM' );
+     
      *
      * Returns true  = image is clean.
      * Returns false = image is blocked.
