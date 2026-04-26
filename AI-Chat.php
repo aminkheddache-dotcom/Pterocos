@@ -1,55 +1,14 @@
 <?php
 /**
  * Plugin Name: MLP AI Chat Sidebar
- * Plugin URI:  https://mobilecodeht.com
- * Description: Adds a slide-in AI chat assistant sidebar to the Mobile Live Preview editor. Supports code explanation, editing, and generation via Replit AI (primary), Mistral AI, Cerebras (backup), Groq (secondary backup), GitHub Models (free tier), and Pollinations (fallback). Requires the Mobile Live Preview plugin.
- * Version:     2.3.0-github
- * Author:      MobileCodeHT
- * Author URI:  https://mobilecodeht.com
- * License:     GPL v2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: mlp-ai-chat
- * Requires at least: 5.0
- * Requires PHP: 7.4
+ * Plugin URI:  https://pterocos.eu.org
+ * Description: AIChat
+ * Version:     -
+ * Author:      -
  */
 
 /**
- * MLP AI Chat Sidebar — Drop-in patch for Mobile Live Preview
- * ─────────────────────────────────────────────────────────────
- * HOW TO INSTALL:
- *   1. Place this file in your plugin folder (same directory as the main .php).
- *   2. Add ONE line near the top of the main plugin file (after the <?php line):
- *        require_once plugin_dir_path(__FILE__) . 'mlp-ai-chat.php';
- *   3. Done. A ✦ AI Chat button will appear in every editor instance.
- *
- * REQUIRED — define all API keys in wp-config.php (never hardcode in this file):
- *   define( 'MLP_TURNSTILE_SITE_KEY',   '...' );
- *   define( 'MLP_TURNSTILE_SECRET_KEY', '...' );
- *   define( 'MLP_REPLIT_API_URL',       '...' );
- *   define( 'MLP_MISTRAL_API_KEY',      '...' );
- *   define( 'MLP_CEREBRAS_API_KEY',     '...' );
- *   define( 'MLP_GROQ_API_KEY',         '...' );
- *   define( 'MLP_GITHUB_API_KEY',       '...' );
- *   define( 'MLP_COHERE_API_KEY',       '...' );
- *   define( 'MLP_SILICON_API_KEY',      '...' );
- *   define( 'MLP_TOGETHER_API_KEY',     '...' );
- *   define( 'MLP_SIGHTENGINE_USER',     '...' );
- *   define( 'MLP_SIGHTENGINE_SECRET',   '...' );
- *   define( 'MLP_IMAGGA_KEY',           '...' );
- *   define( 'MLP_IMAGGA_SECRET',        '...' );
- *   define( 'MLP_GOOGLE_VISION_KEY',    '...' );
- *
- * FEATURES:
- *   • Slide-in sidebar (right side) with dark theme matching the editor.
- *   • Persistent chat history per editor instance (localStorage).
- *   • AI reads current HTML/CSS/JS as context for every message.
- *   • AI can explain, edit, or generate code from scratch.
- *   • "Apply" buttons inject AI-suggested code directly into Monaco editors.
- *   • 6-tier AI fallback: Replit AI (primary) → Mistral AI → Cerebras (llama-3.3-70b) → Groq (llama-3.3-70b) → GitHub Models (gpt-4o, free) → Pollinations (free).
- *   • Works in both normal widget mode and fullscreen mode.
- *   • Provider badge shows which AI answered.
- *
- * All keys are read exclusively from wp-config.php — see the list above.
+ AIChat
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
