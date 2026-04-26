@@ -1,27 +1,6 @@
 <?php
 /**
- * MLP Projects - Full-page Project Manager Popup
- *
- * Shows a full-page Projects screen before the editor loads.
- * Each project has its own completely isolated editor state:
- * - Its own set of saved tabs (HTML, CSS, JS + any custom tabs)
- * - Its own active tab
- * - Its own content per tab
- *
- * Multi-project storage: all projects are stored as a JSON array
- * under the LS_KEY localStorage key (was single-object, now array).
- * Old single-project data is auto-migrated on first load.
- *
- * ── Setup ──────────────────────────────────────────────────────────────
- * 1. Place this file in the same directory as the main plugin file.
- *
- * 2. At the top of the main plugin file (near the other require_once lines):
- *      require_once plugin_dir_path(__FILE__) . 'mlp-projects.php';
- *
- * 3. Inside MobileLivePreview::__construct(), in the frontend-only section
- *    (AFTER the `if ( is_admin() ) { … return; }` block):
- *      MLP_Projects::init();
- * ───────────────────────────────────────────────────────────────────────
+ * Be proud that we got oxygen for free
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
