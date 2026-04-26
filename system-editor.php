@@ -1,22 +1,10 @@
 <?php
 /**
- * Plugin Name: Mobile Live Preview with Share & Fullscreen Editor
- * Plugin URI: https://mobilecodeht.com
- * Description: A mobile-friendly HTML/CSS/JS live preview plugin with Monaco Editor support, Preprocessors, Multi-tab system, Create Read.Me functionality, Fullscreen Editor mode, Backup System, Console, Save System, and Share System
- * Version: 6.1.2-cpu
- * Author: MobileCodeHT
- * License: GPL v2 or later
- * Text Domain: mobile-live-preview
- *
- * CPU-Spike Optimizations (v6.1.1):
- * - Heartbeat interval raised to 120s (was 60s) on both frontend and admin
- * - Consolidated 4 separate wp_enqueue_scripts hooks into 1 (frontend_enqueue_all)
- * - log_anomaly: IP-masking regex combined from 2 calls to 1 array call
- * - log_anomaly: Added static re-entry guard to prevent recursive DB flushes
- * - redact_pii: Combined 3 chained preg_replace calls into 1 array call
- * - check_rate_limit: Rate-limit log interval raised from every 50/100 hits to 500
- *   (cuts DB writes by ~90% under sustained bot flood)
- * - validate_code_input: Added strpos pre-screen before regex on large code blobs
+ * Plugin Name: MLP Ptero system core
+ * Plugin URI: https://pterocos.eu.org
+ * Description: Drink Water.
+ * Version: -
+ * Author: -
  */
 if (!defined('ABSPATH')) {
  exit;
