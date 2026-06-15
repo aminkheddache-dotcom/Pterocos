@@ -9,7 +9,6 @@
 if (!defined('ABSPATH')) {
  exit;
 }
-require_once plugin_dir_path(__FILE__) . 'mlp-community-builds.php';
 require_once plugin_dir_path(__FILE__) . 'mlp-console.php';
 require_once plugin_dir_path(__FILE__) . 'chat.php';
 require_once plugin_dir_path(__FILE__) . 'mlp-projects.php';
