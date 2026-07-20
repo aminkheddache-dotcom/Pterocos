@@ -1,0 +1,3219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pterocos is a free browser-based code editor supporting HTML, CSS & JavaScript (live preview), SQL, Python, Java, Kotlin, Lua and Minecraft Skript. No install, no signup required.">
+  <title>Pterocos — Browser Code Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f97316;
+      --orange-dk: #ea580c;
+      --blue: #2563eb;
+      --blue-lt: #60a5fa;
+      --text: #e2e8f0;
+      --text-2: #b8cce4;
+      --muted: #7a8fa8;
+      --bg: #080d1a;
+      --border: #172035;
+      --white: #0e1628;
+      --surface: #111d35;
+      --surface-2: #162040;
+    }
+
+
+    /* ── UI LANGUAGE SELECTOR ── */
+    .ui-lang-wrap {
+      position: relative;
+      margin-right: 12px;
+    }
+    .ui-lang-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 99px;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .ui-lang-btn:hover {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(255,255,255,0.28);
+      color: #fff;
+    }
+    .ui-lang-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 150px;
+      background: #0e1628;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+      overflow: hidden;
+      z-index: 1000;
+      animation: dropIn .16s ease;
+    }
+    .ui-lang-dropdown.open { display: block; }
+    .ui-lang-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.72);
+      font-size: 0.87rem;
+      font-weight: 500;
+      padding: 10px 16px;
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      transition: background .12s, color .12s;
+    }
+    .ui-lang-option:hover { background: rgba(255,255,255,0.07); color: #fff; }
+    .ui-lang-option.active { color: #60a5fa; font-weight: 700; }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+      padding-top: 64px;
+    }
+    /* Global dark animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(37,99,235,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(99,60,220,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(6,182,212,0.04) 0%, transparent 60%);
+      animation: bgShift 18s ease-in-out infinite alternate;
+    }
+    @keyframes bgShift {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+    /* All content above the bg pseudo-element */
+    .navbar, .hero, section, footer, .cookie-banner, .contact-overlay, .legal-overlay {
+      position: relative;
+      z-index: 1;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(18,23,42,0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+      height: 64px;
+      gap: 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      z-index: 200;
+      transition: background .3s, border-color .3s;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-right: 44px;
+      letter-spacing: -0.01em;
+    }
+    .nav-logo img {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      list-style: none;
+      gap: 4px;
+    }
+    .nav-links a {
+      color: rgba(255,255,255,0.68);
+      font-size: 0.92rem;
+      font-weight: 500;
+      padding: 0 16px;
+      line-height: 64px;
+      transition: color .15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: #fff; background: transparent; }
+    .nav-gap { flex: 1; }
+    .nav-support {
+      color: rgba(255,255,255,0.68);
+      font-size: 0.92rem;
+      font-weight: 500;
+      margin-right: 24px;
+      transition: color .15s;
+      white-space: nowrap;
+    }
+    .nav-support:hover { color: #fff; }
+    .btn-get {
+      background: transparent;
+      color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.55);
+      border-radius: 99px;
+      padding: 9px 22px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+    .btn-get:hover { background: rgba(255,255,255,0.1); border-color: #fff; box-shadow: none; }
+
+    /* ── GITHUB STAR BADGE ── */
+    .nav-star-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 99px;
+      color: rgba(255,255,255,0.8);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 6px 13px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s, border-color .15s, color .15s;
+      font-family: inherit;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    .nav-star-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.32); color: #fff; }
+    .nav-star-btn svg { flex-shrink: 0; }
+    .nav-star-count { font-variant-numeric: tabular-nums; }
+
+    /* ── THEME TOGGLE ── */
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 99px;
+      color: rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s, transform .2s;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.32); color: #fff; transform: rotate(20deg); }
+    .theme-toggle-btn .icon-moon { display: block; }
+    .theme-toggle-btn .icon-sun  { display: none; }
+
+    /* ── LIGHT MODE ── */
+    html[data-theme="light"] {
+      --text: #0f172a;
+      --text-2: #334155;
+      --muted: #64748b;
+      --bg: #f1f5f9;
+      --border: #e2e8f0;
+      --white: #ffffff;
+      --surface: #f8fafc;
+      --surface-2: #e8eef6;
+    }
+    html[data-theme="light"] body { background: #f1f5f9; color: #0f172a; }
+    html[data-theme="light"] body::before { opacity: 0.18; }
+    html[data-theme="light"] .navbar {
+      background: rgba(248,250,252,0.88);
+      border-bottom-color: rgba(0,0,0,0.08);
+    }
+    html[data-theme="light"] .nav-links a { color: rgba(0,0,0,0.62); }
+    html[data-theme="light"] .nav-links a:hover { color: #0f172a; }
+    html[data-theme="light"] .nav-support { color: rgba(0,0,0,0.62); }
+    html[data-theme="light"] .nav-support:hover { color: #0f172a; }
+    html[data-theme="light"] .nav-logo { color: #0f172a; }
+    html[data-theme="light"] .btn-get { border-color: rgba(0,0,0,0.28); color: #0f172a; }
+    html[data-theme="light"] .btn-get:hover { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.5); }
+    html[data-theme="light"] .nav-star-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.14); color: #0f172a; }
+    html[data-theme="light"] .nav-star-btn:hover { background: rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.28); }
+    html[data-theme="light"] .theme-toggle-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.14); color: #0f172a; }
+    html[data-theme="light"] .theme-toggle-btn:hover { background: rgba(0,0,0,0.1); }
+    html[data-theme="light"] .theme-toggle-btn .icon-moon { display: none; }
+    html[data-theme="light"] .theme-toggle-btn .icon-sun  { display: block; }
+    html[data-theme="light"] .ui-lang-btn { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.14); color: #0f172a; }
+    html[data-theme="light"] .ui-lang-btn:hover { background: rgba(0,0,0,0.1); }
+    html[data-theme="light"] .ui-lang-dropdown { background: #fff; border-color: #e2e8f0; }
+    html[data-theme="light"] .ui-lang-option { color: rgba(0,0,0,0.7); }
+    html[data-theme="light"] .ui-lang-option:hover { background: rgba(0,0,0,0.05); color: #0f172a; }
+    html[data-theme="light"] .ui-lang-option.active { color: #2563eb; }
+    html[data-theme="light"] section { background-color: transparent; }
+    html[data-theme="light"] .feature-card,
+    html[data-theme="light"] .lang-card { background: #fff; border-color: #e2e8f0; }
+    html[data-theme="light"] .feature-card:hover { background: #f0f6ff; }
+    html[data-theme="light"] .pricing-card { background: #fff; border-color: #e2e8f0; }
+    html[data-theme="light"] .review-card { background: #fff; border-color: #e2e8f0; }
+    html[data-theme="light"] .discord-partner-card { background: #fff; border-color: #e2e8f0; }
+    html[data-theme="light"] .featured-badge { background: #f1f5f9; border-color: #e2e8f0; filter: brightness(1); }
+    html[data-theme="light"] footer { background: #fff; border-top-color: #e2e8f0; color: #334155; }
+    html[data-theme="light"] .cookie-banner { background: #1e293b; }
+    html[data-theme="light"] .contact-modal { background: #fff; color: #0f172a; }
+    html[data-theme="light"] .contact-modal h3 { color: #0f172a; }
+    html[data-theme="light"] .contact-option { background: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
+    html[data-theme="light"] .contact-option:hover { background: #f1f5f9; }
+    html[data-theme="light"] .legal-modal { background: #fff; color: #0f172a; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.16) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        linear-gradient(160deg, #1d2fe0 0%, #1836c9 42%, #10238f 100%);
+      padding: 88px 48px 72px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.07) 0 0),
+        linear-gradient(rgba(255,255,255,0.07) 0 0),
+        linear-gradient(rgba(255,255,255,0.05) 0 0),
+        linear-gradient(rgba(255,255,255,0.05) 0 0);
+      background-repeat: no-repeat;
+      background-size: 22% 46%, 16% 30%, 30% 20%, 12% 60%;
+      background-position: -4% 8%, 88% -6%, 78% 78%, 4% 82%;
+      border-radius: 0 0 60px 60px;
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+    .hero-eyebrow-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 9px 20px;
+      border-radius: 99px;
+      margin-bottom: 28px;
+      backdrop-filter: blur(4px);
+      text-decoration: none;
+      transition: background .15s, transform .15s;
+    }
+    .hero-eyebrow-pill:hover { background: rgba(255,255,255,0.18); transform: translateY(-1px); }
+    .hero h1 {
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+    .hero-sub {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 36px;
+      line-height: 1.6;
+      font-weight: 400;
+      max-width: 520px;
+    }
+    .hero-action-card {
+      position: relative;
+      width: 100%;
+      max-width: 620px;
+      background: rgba(8,14,42,0.82);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 20px;
+      padding: 24px 28px 28px;
+      box-shadow: 0 24px 60px rgba(5,10,40,0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .hero-action-label {
+      align-self: center;
+      text-align: center;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ── GREEN START BUTTON ── */
+    .hero-start-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 15px 28px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(5,150,105,0.32);
+      transition: transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+      align-self: flex-start;
+      margin-bottom: 0;
+      font-family: inherit;
+    }
+    .hero-start-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+      animation: btnShimmer 2.4s infinite;
+    }
+    @keyframes btnShimmer {
+      0%   { left: -100%; }
+      100% { left: 210%; }
+    }
+    .hero-start-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(5,150,105,0.42); }
+
+    /* ── LANG PICKER DROPDOWN ── */
+    .lang-picker-wrap {
+      position: relative;
+      align-self: center;
+      margin-bottom: 20px;
+    }
+    .lang-picker-dropdown {
+      display: none !important;
+      position: absolute !important;
+      top: calc(100% + 10px) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: 320px !important;
+      max-width: 90vw !important;
+      background: #0e1628 !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 14px !important;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7) !important;
+      z-index: 999 !important;
+      overflow: hidden !important;
+      animation: dropIn .18s ease !important;
+    }
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .lang-picker-dropdown.open { display: block !important; }
+    .lang-picker-search-wrap {
+      padding: 12px 12px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .lang-picker-search {
+      width: 100%;
+      padding: 9px 12px 9px 34px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #1e2a44;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .lang-picker-search:focus { border-color: #059669; background: #1e2a44; }
+    .lang-picker-search-icon {
+      position: absolute;
+      left: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--muted);
+    }
+    .lang-picker-search-wrap { position: relative; }
+    .lang-picker-list {
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+    .lang-picker-list::-webkit-scrollbar { width: 4px; }
+    .lang-picker-list::-webkit-scrollbar-track { background: transparent; }
+    .lang-picker-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .lang-picker-group-label {
+      font-size: 0.62rem !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.1em !important;
+      text-transform: uppercase !important;
+      color: #64748b !important;
+      background: #0e1628 !important;
+      color: #7a8fa8 !important;
+      padding: 8px 14px 4px !important;
+    }
+    .lang-picker-item {
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 9px 14px !important;
+      cursor: pointer !important;
+      transition: background .12s !important;
+      border-radius: 0 !important;
+      background: #0e1628 !important;
+    }
+    .lang-picker-item-icon {
+      width: 26px !important;
+      height: 26px !important;
+      border-radius: 7px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
+      background: #1e2a44 !important;
+    }
+    .lang-picker-item-icon svg { width: 20px !important; height: 20px !important; display: block !important; }
+    .lang-picker-item:hover { background: rgba(5,150,105,0.12) !important; }
+    .lang-picker-item.selected { background: rgba(5,150,105,0.15) !important; }
+    .lang-picker-item-name {
+      font-size: 0.88rem !important;
+      font-weight: 600 !important;
+      color: var(--text) !important;
+      flex: 1 !important;
+    }
+    .lang-picker-item-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(37,99,235,0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(96,165,250,0.2);
+      white-space: nowrap;
+    }
+    .lang-picker-item-tag.prepro {
+      background: rgba(29,78,216,0.2);
+      color: #93c5fd;
+      border-color: rgba(147,197,253,0.3);
+    }
+    .lang-picker-item .check {
+      width: 16px;
+      height: 16px;
+      color: #059669;
+      flex-shrink: 0;
+      opacity: 0;
+    }
+    .lang-picker-item.selected .check { opacity: 1; }
+    .lang-picker-empty {
+      padding: 20px;
+      text-align: center;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+    /* create folder button */
+    .create-folder-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 14px 26px;
+      border-radius: 12px;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(37,99,235,0.28);
+      transition: transform .2s, box-shadow .2s;
+      margin-top: 4px;
+      align-self: center;
+      animation: fadeUp .22s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .create-folder-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(37,99,235,0.38); }
+    .create-folder-btn svg { flex-shrink: 0; }
+    .selected-lang-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      align-self: center;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 99px;
+      padding: 6px 14px 6px 8px;
+      margin-top: 6px;
+      animation: fadeUp .22s ease;
+    }
+    .selected-lang-indicator-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: #fff;
+    }
+    .selected-lang-indicator-icon svg { width: 16px; height: 16px; }
+    .selected-lang-indicator-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+    .selected-lang-indicator-name {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* lang icons */
+    .hero-lang-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      margin-top: 28px;
+    }
+    .hero-lang-row-label {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-right: 4px;
+    }
+    .hero-lang-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.09);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .15s, box-shadow .15s, background .15s;
+      cursor: default;
+    }
+    .hero-lang-icon:hover { transform: translateY(-3px); background: rgba(255,255,255,0.13); box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+    .hero-lang-icon svg { width: 20px; height: 20px; }
+    .hero-lang-icon { position: relative; }
+    .hero-lang-tooltip {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: #1e293b;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s, transform .15s;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      z-index: 20;
+    }
+    .hero-lang-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #1e293b;
+    }
+    .hero-lang-tooltip .tt-name { font-weight: 800; margin-bottom: 4px; }
+    .hero-lang-tooltip .tt-prepros {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .hero-lang-tooltip .tt-pill {
+      background: rgba(255,255,255,0.12);
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .hero-lang-icon:hover .hero-lang-tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    /* ── HERO TAGLINE ── */
+    .hero-tagline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .tl-dot { display: none; }
+    .tl-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 99px;
+      padding: 6px 16px;
+      backdrop-filter: blur(4px);
+    }
+    .tl-badge-green  { border-color: rgba(134,239,172,0.4); background: rgba(134,239,172,0.12); color: #86efac; }
+    .tl-badge-blue   { border-color: rgba(147,197,253,0.4); background: rgba(147,197,253,0.12); color: #93c5fd; }
+    .tl-badge-purple { border-color: rgba(216,180,254,0.4); background: rgba(216,180,254,0.12); color: #d8b4fe; }
+    .tl-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 99px;
+      padding: 6px 16px 6px 12px;
+      backdrop-filter: blur(4px);
+      transition: background .15s, border-color .15s, color .15s;
+      text-decoration: none;
+    }
+    .tl-source:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.35); color: #fff; }
+    .tl-source:hover svg { fill: #fff; }
+    .tl-source svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.8); transition: fill .15s; }
+    .hero-cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--orange), var(--orange-dk));
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 14px 32px;
+      border-radius: 10px;
+      text-decoration: none;
+      box-shadow: 0 4px 18px rgba(249,115,22,0.3);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .hero-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(249,115,22,0.4); }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.03) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        radial-gradient(circle at 88% 12%, rgba(37,99,235,0.22), transparent 45%),
+        radial-gradient(circle at 6% 90%, rgba(29,78,216,0.18), transparent 42%),
+        var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 56px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-banner-content {
+      text-align: center;
+      flex: 1;
+      max-width: 560px;
+    }
+    .cta-banner h2 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .cta-banner p {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--blue);
+      color: #fff;
+      border-radius: 6px;
+      padding: 12px 26px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background .15s, box-shadow .15s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary:hover { background: #1d4ed8; box-shadow: 0 4px 16px rgba(37,99,235,0.35); }
+    .cta-deco {
+      position: absolute;
+      right: 40px;
+      bottom: 0;
+      opacity: 0.12;
+      pointer-events: none;
+    }
+    .cta-deco svg { width: 200px; height: 200px; }
+
+    /* ── FEATURES ── */
+    .features {
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.025) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        radial-gradient(circle at 10% 10%, rgba(37,99,235,0.15), transparent 40%),
+        radial-gradient(circle at 92% 88%, rgba(37,99,235,0.12), transparent 40%),
+        var(--surface);
+      padding: 72px 24px 80px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px 32px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    .feature-item {
+      text-align: center;
+      padding: 0 12px;
+    }
+    .feature-icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .feature-icon svg {
+      width: 52px;
+      height: 52px;
+      fill: var(--blue-lt);
+    }
+    .feature-item h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .feature-item p {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* ── LANGUAGES ── */
+    .langs-section {
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.025) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        radial-gradient(circle at 92% 8%, rgba(37,99,235,0.20), transparent 42%),
+        radial-gradient(circle at 4% 92%, rgba(99,60,220,0.14), transparent 40%),
+        var(--bg);
+      padding: 72px 24px 80px;
+      border-top: 1px solid var(--border);
+    }
+    .langs-title {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .langs-sub {
+      text-align: center;
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 48px;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+    .langs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .lang-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 20px 18px;
+      transition: box-shadow .2s, transform .2s, border-color .2s;
+    }
+    .lang-card:hover {
+      box-shadow: 0 6px 32px rgba(37,99,235,0.18);
+      transform: translateY(-2px);
+      border-color: rgba(96,165,250,0.35);
+    }
+    .lang-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .lang-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 6px;
+    }
+    .lang-icon svg { width: 36px; height: 36px; }
+    .lang-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .lang-type {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+    .lang-prepros-label {
+      font-size: 0.63rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .lang-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pill {
+      background: rgba(37,99,235,0.12);
+      color: #93c5fd;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid rgba(96,165,250,0.2);
+    }
+    .lang-run-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(5,150,105,0.15);
+      color: #34d399;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid rgba(52,211,153,0.25);
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #1e293b;
+      padding: 32px 48px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 32px;
+      position: relative;
+    }
+    .footer-quote {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.82rem;
+      line-height: 1.65;
+    }
+    .quote-mark {
+      font-size: 3rem;
+      line-height: 1;
+      color: rgba(255,255,255,0.2);
+      font-family: Georgia, serif;
+      flex-shrink: 0;
+      margin-top: -4px;
+    }
+    .footer-quote a { color: var(--orange); }
+    .footer-info {
+      text-align: right;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.78rem;
+      line-height: 1.7;
+    }
+    .footer-info a { color: rgba(255,255,255,0.7); transition: color .15s; cursor: pointer; }
+    .footer-info a:hover { color: #fff; }
+    /* ── Discord Partners Section ── */
+    .discord-partners-section {
+      padding: 80px clamp(32px, 5vw, 80px);
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.025) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        radial-gradient(circle at 90% 12%, rgba(88,101,242,0.20), transparent 42%),
+        radial-gradient(circle at 6% 90%, rgba(37,99,235,0.15), transparent 40%),
+        var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    .discord-partners-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #5865f2;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .discord-partners-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 24px;
+      height: 2px;
+      background: #5865f2;
+      border-radius: 2px;
+    }
+    .discord-partners-title {
+      font-size: clamp(1.5rem, 2.2vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .discord-partners-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 44px;
+      max-width: 480px;
+    }
+    .discord-partners-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 960px;
+    }
+    .discord-partner-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .discord-partner-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #5865f2, #7289da);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .discord-partner-card:hover {
+      border-color: rgba(88, 101, 242, 0.35);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.08);
+    }
+    .discord-partner-card:hover::before { opacity: 1; }
+    .discord-partner-card.featured {
+      border-color: rgba(88, 101, 242, 0.35);
+      background: linear-gradient(145deg, #0f1d38 0%, #12203f 100%);
+    }
+    .dp-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .dp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 100px;
+      align-self: flex-start;
+    }
+    .dp-badge-official {
+      background: rgba(88, 101, 242, 0.2);
+      border: 1px solid rgba(88, 101, 242, 0.4);
+      color: #a5b4fc;
+    }
+    .dp-badge-partner {
+      background: rgba(99, 110, 114, 0.15);
+      border: 1px solid rgba(99, 110, 114, 0.3);
+      color: #94a3b8;
+    }
+    .dp-name {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+    .dp-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0;
+      flex: 1;
+    }
+    .dp-join-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: #5865f2;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      align-self: flex-start;
+      transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+    }
+    .dp-join-btn:hover {
+      background: #4752c4;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(88, 101, 242, 0.35);
+    }
+    .dp-join-btn svg { flex-shrink: 0; }
+    @media (max-width: 700px) {
+      .discord-partners-grid { grid-template-columns: 1fr; }
+      .discord-partners-section { padding: 52px 18px; }
+    }
+
+    .footer-discord {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #5865f2;
+      color: #fff !important;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background .15s, transform .15s;
+    }
+    .footer-discord:hover { background: #4752c4; transform: translateY(-1px); color: #fff !important; }
+    .footer-stars {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #24292e;
+      color: #fff !important;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background .15s, transform .15s;
+    }
+    .footer-stars:hover { background: #444d56; transform: translateY(-1px); color: #fff !important; }
+    .star-count {
+      background: rgba(255,255,255,0.15);
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-size: 0.73rem;
+      font-weight: 700;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .hero { padding: 48px 24px; }
+      .hero h1 { font-size: 2.1rem; }
+      .hero-action-card { padding: 20px 18px 22px; }
+      .hero-start-btn { align-self: stretch; justify-content: center; }
+      .lang-picker-wrap { align-self: stretch; width: 100%; }
+      .lang-picker-dropdown { width: 100%; }
+      .create-folder-btn { align-self: stretch; justify-content: center; }
+    }
+    @media (max-width: 768px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); gap: 36px 20px; }
+      .cta-banner { flex-direction: column; gap: 24px; padding: 40px 24px; }
+      .cta-deco { display: none; }
+      .footer { grid-template-columns: 1fr; }
+      .footer-info { text-align: left; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 480px) {
+      .features-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── PRICING ── */
+    .pricing {
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.025) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        radial-gradient(circle at 90% 10%, rgba(37,99,235,0.20), transparent 42%),
+        radial-gradient(circle at 6% 88%, rgba(5,150,105,0.12), transparent 40%),
+        var(--surface);
+      padding: 80px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .pricing-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+    .pricing-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    .reviews-widget {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .reviews-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .review-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+    }
+    .review-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .review-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--orange), var(--orange-dk));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .review-name { font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    .review-role { font-size: 0.78rem; color: var(--muted); }
+    .review-text {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .review-readmore {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--orange);
+    }
+    .review-readmore:hover { color: var(--orange-dk); }
+    .pricing-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .pricing-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(5,150,105,0.15);
+      border: 1px solid rgba(52,211,153,0.3);
+      color: #34d399;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 99px;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+    }
+    .pricing-header h2 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+    .pricing-header h2 .hi { color: #059669; }
+    .pricing-header p {
+      font-size: 0.97rem;
+      color: var(--muted);
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+    .pricing-cards-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .pricing-card-single {
+      background: var(--surface);
+      border: 2px solid #059669;
+      border-radius: 20px;
+      padding: 40px 44px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 8px 40px rgba(5,150,105,0.2), 0 0 60px rgba(5,150,105,0.06);
+      text-align: center;
+    }
+    .pricing-plan-label {
+      display: inline-block;
+      background: rgba(5,150,105,0.15);
+      color: #34d399;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 99px;
+      border: 1px solid rgba(52,211,153,0.25);
+      margin-bottom: 24px;
+    }
+    .pricing-amount {
+      font-size: 5rem;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .pricing-amount-symbol {
+      font-size: 2.5rem;
+      font-weight: 700;
+      vertical-align: super;
+      color: var(--muted);
+    }
+    .pricing-period {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .pricing-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 0 28px;
+    }
+    .pricing-features {
+      list-style: none;
+      text-align: left;
+      margin-bottom: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pricing-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .pf-check {
+      color: #059669;
+      font-weight: 800;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .pricing-cta-btn {
+      display: block;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 14px 24px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      transition: box-shadow .2s, transform .2s;
+      box-shadow: 0 4px 16px rgba(5,150,105,0.25);
+    }
+    .pricing-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5,150,105,0.35); }
+    .pricing-note {
+      font-size: 0.76rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .pricing-forever-strip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 18px 32px;
+    }
+    .pfs-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-2);
+      padding: 6px 24px;
+    }
+    .pfs-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #059669;
+      flex-shrink: 0;
+    }
+    .pfs-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+    @media (max-width: 600px) {
+      .pricing-card-single { padding: 28px 20px; }
+      .pricing-header h2 { font-size: 1.8rem; }
+      .pricing-forever-strip { flex-direction: column; gap: 2px; }
+      .pfs-sep { display: none; }
+      .pricing-split { grid-template-columns: 1fr; }
+    }
+    /* ══ FEATURED ON ══ */
+    .featured-section {
+      padding: 80px clamp(24px, 5vw, 80px);
+      background:
+        radial-gradient(circle at 6px 6px, rgba(255,255,255,0.025) 1.4px, transparent 1.6px) 0 0 / 22px 22px,
+        var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .featured-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .featured-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 12px;
+    }
+    .featured-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 24px;
+      height: 2px;
+      background: var(--orange);
+      border-radius: 2px;
+    }
+    .featured-header h2 {
+      font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .featured-header p {
+      font-size: 0.92rem;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    .feat-badge-card {
+      background: var(--surface-2, #162040);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+      min-height: 100px;
+    }
+    .feat-badge-card:hover {
+      border-color: rgba(96,165,250,.4);
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      transform: translateY(-3px);
+    }
+    .feat-badge-card img {
+      max-width: 130px;
+      max-height: 40px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .feat-badge-card span.feat-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.3;
+    }
+    .feat-badge-tinystartups {
+      background: linear-gradient(135deg, #3525E6, #D81FE0, #22B8F0);
+      border-color: transparent;
+    }
+    .feat-badge-tinystartups .feat-label { color: rgba(255,255,255,0.9); }
+    .feat-badge-tinystartups:hover { border-color: transparent; }
+    @media (max-width: 600px) {
+      .featured-grid { grid-template-columns: repeat(2, 1fr); }
+      .featured-section { padding: 52px 18px; }
+    }
+    /* ── CONTACT POPUP ── */
+    .contact-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .contact-overlay.open { display: flex; }
+    .contact-modal {
+      background: #0e1628;
+      color: var(--text);
+      border-radius: 16px;
+      padding: 40px 36px 32px;
+      max-width: 440px;
+      width: 90%;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      animation: modalIn .2s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.94) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .contact-modal-close {
+      position: absolute;
+      top: 14px; right: 16px;
+      background: none; border: none;
+      font-size: 1.4rem;
+      color: var(--muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background .15s, color .15s;
+    }
+    .contact-modal-close:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .contact-modal-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg,#f97316,#ea580c);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px;
+    }
+    .contact-modal h3 {
+      font-size: 1.3rem; font-weight: 800;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .contact-modal p {
+      font-size: 0.9rem; color: var(--muted);
+      margin-bottom: 24px; line-height: 1.6;
+    }
+    .contact-option {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .contact-option:hover {
+      border-color: var(--orange);
+      box-shadow: 0 4px 16px rgba(249,115,22,0.18);
+      background: rgba(249,115,22,0.07);
+    }
+    .contact-option-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .contact-option-icon.email { background: rgba(37,99,235,0.15); }
+    .contact-option-icon.discord { background: rgba(88,101,242,0.15); }
+    .contact-option-label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    .contact-option-value { font-size: 0.92rem; font-weight: 700; color: var(--text); margin-top: 1px; }
+
+    /* ── COOKIE BANNER ── */
+    .cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1e293b;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      z-index: 9998;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      animation: slideUp .3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .cookie-banner.hidden { display: none; }
+    .cookie-banner-text {
+      flex: 1;
+      font-size: 0.83rem;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.55;
+      min-width: 240px;
+    }
+    .cookie-banner-text a {
+      color: #93c5fd;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .cookie-banner-text a:hover { color: #bfdbfe; }
+    .cookie-banner-actions {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .cookie-accept-btn {
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+      white-space: nowrap;
+    }
+    .cookie-accept-btn:hover { background: #047857; }
+    .cookie-learn-btn {
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .cookie-learn-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    /* ── LEGAL MODAL ── */
+    .legal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .legal-overlay.open { display: flex; }
+    .legal-modal {
+      background: #0e1628;
+      color: var(--text);
+      border-radius: 18px;
+      padding: 0;
+      max-width: 680px;
+      width: 100%;
+      max-height: 85vh;
+      position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+      animation: modalIn .2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .legal-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .legal-modal-header h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .legal-modal-close {
+      background: none; border: none;
+      font-size: 1.4rem;
+      color: var(--muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background .15s, color .15s;
+    }
+    .legal-modal-close:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .legal-modal-body {
+      padding: 28px 32px 32px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.75;
+    }
+    .legal-modal-body h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 22px 0 8px;
+    }
+    .legal-modal-body h3:first-child { margin-top: 0; }
+    .legal-modal-body p { margin-bottom: 10px; }
+    .legal-modal-body ul {
+      padding-left: 18px;
+      margin-bottom: 10px;
+    }
+    .legal-modal-body ul li { margin-bottom: 4px; }
+    .legal-modal-updated {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="#" class="nav-logo">
+      <img src="https://pterocos.eu.org/wp-content/uploads/2026/07/pterocos.png" alt="Pterocos">
+      Pterocos
+    </a>
+    <ul class="nav-links">
+      <li><a href="#" data-i18n="nav_home">Home</a></li>
+      <li><a href="#features" data-i18n="nav_features">Features</a></li>
+      <li><a href="#pricing" data-i18n="nav_pricing">Pricing</a></li>
+      <li><a href="#featured" data-i18n="nav_featured">Featured On</a></li>
+      <li><a href="#discord-partners" data-i18n="nav_partners">Partners</a></li>
+      <li><a href="#" onclick="openContactPopup();return false;" data-i18n="nav_contact">Contact</a></li>
+    </ul>
+    <div class="nav-gap"></div>
+    <!-- GitHub Star Badge -->
+    <a href="https://github.com/aminkheddache-dotcom/Pterocos" target="_blank" rel="noopener" class="nav-star-btn" id="navStarBtn" aria-label="Star on GitHub">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      
+      <span class="nav-star-count" id="navStarCount">—</span>
+    </a>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">
+      <!-- Moon: shown in dark mode -->
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <!-- Sun: shown in light mode -->
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <div class="ui-lang-wrap" id="uiLangWrap">
+      <button class="ui-lang-btn" id="uiLangBtn" onclick="toggleUILang(event)" aria-label="Select language">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span id="uiLangLabel">EN</span>
+        <svg id="uiLangChevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .18s"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="ui-lang-dropdown" id="uiLangDropdown">
+        <button class="ui-lang-option" data-lang="en" onclick="setUILang('en')">🇬🇧 English</button>
+        <button class="ui-lang-option" data-lang="ar" onclick="setUILang('ar')">🇸🇦 العربية</button>
+        <button class="ui-lang-option" data-lang="ur" onclick="setUILang('ur')">🇵🇰 اردو</button>
+        <button class="ui-lang-option" data-lang="hi" onclick="setUILang('hi')">🇮🇳 हिंदी</button>
+        <button class="ui-lang-option" data-lang="es" onclick="setUILang('es')">🇪🇸 Español</button>
+        <button class="ui-lang-option" data-lang="fr" onclick="setUILang('fr')">🇫🇷 Français</button>
+      </div>
+    </div>
+    <a href="#" onclick="openContactPopup();return false;" class="nav-support" data-i18n="nav_support">Support</a>
+    <a href="https://pterocos.eu.org/code-jc/" target="_top" class="btn-get" data-i18n="nav_start">
+      Start Coding
+    </a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+
+      <!-- LEFT: text, CTA, langs, badges -->
+      <div class="hero-left">
+        <a href="#features" class="hero-eyebrow-pill" data-i18n="hero_eyebrow">Free forever, no signup required →</a>
+        <h1 data-i18n="hero_title">Online Code Editor</h1>
+        <p class="hero-sub" data-i18n="hero_sub">Start coding instantly — no install, no signup. Just use pterocos and build.</p>
+
+        <div class="hero-action-card">
+          <span class="hero-action-label" data-i18n="hero_action_label">Get Started</span>
+          <!-- Green CTA button + dropdown -->
+          <div class="lang-picker-wrap" id="langPickerWrap">
+            <button class="hero-start-btn" onclick="toggleLangPicker(event)">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span data-i18n="hero_btn">Let's go</span>
+              <svg id="langPickerChevron" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;transition:transform .2s;margin-left:2px"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <!-- Dropdown -->
+            <div class="lang-picker-dropdown" id="langPickerDropdown">
+              <div class="lang-picker-search-wrap">
+                <svg class="lang-picker-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="top:50%;transform:translateY(-50%);position:absolute;left:22px;pointer-events:none;color:#64748b"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  class="lang-picker-search"
+                  id="langPickerSearch"
+                  type="text"
+                  placeholder="Search languages &amp; preprocessors…" data-i18n-placeholder="hero_search_ph"
+                  oninput="filterLangPicker(this.value)"
+                  autocomplete="off"
+                >
+              </div>
+              <div class="lang-picker-list" id="langPickerList"></div>
+            </div>
+          </div>
+
+          <!-- Selected language indicator — shown after selection -->
+          <div class="selected-lang-indicator" id="selectedLangIndicator" style="display:none;">
+            <span class="selected-lang-indicator-icon" id="selectedLangIcon"></span>
+            <span class="selected-lang-indicator-label" data-i18n="hero_selected">Selected:</span>
+            <span class="selected-lang-indicator-name" id="selectedLangName"></span>
+          </div>
+
+          <!-- "Let's create your first folder" button — shown after selection -->
+          <a href="https://pterocos.eu.org/code-jc/" target="_top" class="create-folder-btn" id="createFolderBtn" style="display:none;">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+            <span data-i18n="hero_folder_btn">Let's create your first folder</span>
+          </a>
+        </div>
+
+        <!-- Language icons -->
+        <div class="hero-lang-row">
+          <span class="hero-lang-row-label" data-i18n="hero_runs">Runs&nbsp;</span>
+          <!-- HTML5 -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#e44d26"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#f16529"/><path d="M9.4 10.6h6.6v3.2H12.9l.2 2.6h6.5l-.7 7.4-3.4 1V21.7l-3.1-.8-.2-2.5H9.1l.3 5.1L16 25.4V22l-3.2-.9-.2-2.4H16v-3.1h-6.8z" fill="#ebebeb"/><path d="M16 10.6h3.3l-.2 2.6H16v3.1h3.1l-.3 3.6L16 20.8V25.4l6.7-1.9.8-9.7.1-3.2H16z" fill="#fff"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">HTML — Markup language</div>
+              <div class="tt-prepros"><span class="tt-pill">Pug</span><span class="tt-pill">Markdown</span></div>
+            </div>
+          </div>
+          <!-- CSS3 -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#1572b6"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#33a9dc"/><path d="M9.5 10.6h6.5v3.2h-3.3l.2 1.6h3.1v3.1h-2.8l.2 2.6 2.6.7v3.4l-6.2-1.7z" fill="#ebebeb"/><path d="M22.5 10.6H16v3.2h6.2l-.2 1.6H16v3.1h5.7l-.6 5.3-5.1 1.4v3.4l6.2-1.7z" fill="#fff"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">CSS — Styling language</div>
+              <div class="tt-prepros"><span class="tt-pill">SCSS</span><span class="tt-pill">Sass</span><span class="tt-pill">Less</span></div>
+            </div>
+          </div>
+          <!-- JavaScript -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="3" fill="#f7df1e"/><path d="M10.6 25.3c.6 1 1.5 1.7 3 1.7 1.6 0 2.6-.8 2.6-2.3V17h-2.4v7.6c0 .6-.2.9-.7.9-.5 0-.8-.3-1.1-.8zm7.7-.4c.7 1.2 1.9 2.1 3.8 2.1 2 0 3.4-1.1 3.4-2.8 0-1.6-1-2.4-2.7-3.1l-.6-.2c-.9-.4-1.2-.6-1.2-1.2 0-.5.4-.9 1-.9.6 0 1 .3 1.4.9l1.6-1c-.7-1.2-1.7-1.7-3-1.7-1.9 0-3.1 1.2-3.1 2.8 0 1.5 1 2.4 2.6 3l.6.3c.9.4 1.3.7 1.3 1.3 0 .6-.5 1-1.3 1-.9 0-1.5-.5-1.9-1.2z"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">JavaScript — Scripting language</div>
+              <div class="tt-prepros"><span class="tt-pill">TypeScript</span><span class="tt-pill">JSX (React)</span><span class="tt-pill">CoffeeScript</span><span class="tt-pill">Babel</span><span class="tt-pill">LiveScript</span></div>
+            </div>
+          </div>
+          <!-- Python -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pyb" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#387EB8"/><stop offset="100%" stop-color="#366994"/></linearGradient><linearGradient id="pyy" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFE052"/><stop offset="100%" stop-color="#FFC331"/></linearGradient></defs><path d="M15.9 3C11 3 11.3 5.1 11.3 5.1V7.2h4.7v.6H8.6S5 7.4 5 12.4c0 5 2.8 4.8 2.8 4.8H9.6v-2.3s-.1-2.8 2.7-2.8h4.7s2.6.1 2.6-2.5V5.7S20.1 3 15.9 3zM13.3 5.1c.5 0 .9.4.9.9s-.4.9-.9.9-.9-.4-.9-.9.4-.9.9-.9z" fill="url(#pyb)"/><path d="M16.1 29c4.9 0 4.6-2.1 4.6-2.1v-2.1h-4.7v-.6h7.4s3.6.4 3.6-4.6c0-5-2.8-4.8-2.8-4.8H22.4v2.3s.1 2.8-2.7 2.8h-4.7s-2.6-.1-2.6 2.5v4.2s-.4 2.4 3.7 2.4zm2.6-2.1c-.5 0-.9-.4-.9-.9s.4-.9.9-.9.9.4.9.9-.4.9-.9.9z" fill="url(#pyy)"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Python — General purpose</div>
+            </div>
+          </div>
+          <!-- DuckDB -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="8" rx="11" ry="4" fill="#f4a12a"/><path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#e8920a"/><path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#d47f00"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">DuckDB — SQL analytics</div>
+            </div>
+          </div>
+          <!-- SQLite -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="8" rx="11" ry="4" fill="#4a90d9"/><path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#357abd"/><path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#2a6099"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">SQLite — SQL database</div>
+            </div>
+          </div>
+          <!-- Lua -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="#000080"/><circle cx="21" cy="11" r="4" fill="#fff"/><circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16" cy="16" r="4" fill="#fff"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Lua — Scripting language</div>
+            </div>
+          </div>
+          <!-- C# -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16 2L4 8.7v14.6L16 30l12-6.7V8.7z" fill="#9b4f96"/><path d="M16 7a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 5.7-2l-2.5-2.5A5.5 5.5 0 0 1 16 22a5.5 5.5 0 0 1-5.5-5.5A5.5 5.5 0 0 1 16 11a5.5 5.5 0 0 1 3.2 1l2.5-2.5A9 9 0 0 0 16 7z" fill="#fff"/><rect x="21" y="14" width="1.5" height="4" fill="#fff"/><rect x="19.5" y="15.5" width="4.5" height="1" fill="#fff"/><rect x="24.5" y="14" width="1.5" height="4" fill="#fff"/><rect x="23" y="15.5" width="4.5" height="1" fill="#fff"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">C# (.NET) — General purpose</div>
+            </div>
+          </div>
+          <!-- Ruby -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><polygon points="20,4 28,12 16,28 4,28 4,16" fill="#cc342d"/><polygon points="20,4 28,12 24,4" fill="#a31f1f"/><polygon points="4,28 4,16 10,22" fill="#e06b65"/><polygon points="16,28 10,22 20,18 28,12" fill="#a31f1f"/><polygon points="10,22 4,16 10,10 20,4 20,18" fill="#cc342d"/><polygon points="10,22 20,18 16,28" fill="#e8a09d"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Ruby — General purpose</div>
+            </div>
+          </div>
+          <!-- PHP -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="16" cy="16" rx="15" ry="9" fill="#8892bf"/>
+              <ellipse cx="16" cy="16" rx="15" ry="9" fill="none" stroke="#4f5b93" stroke-width="0.8"/>
+              <text x="16" y="20.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="Arial,sans-serif" fill="#fff" letter-spacing="0.5">PHP</text>
+            </svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">PHP — Server-side scripting</div>
+            </div>
+          </div>
+          <!-- Rust -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="none" stroke="#ce422b" stroke-width="2.5"/><circle cx="16" cy="16" r="5" fill="#ce422b"/><rect x="14.5" y="3" width="3" height="4" rx="1" fill="#ce422b"/><rect x="14.5" y="25" width="3" height="4" rx="1" fill="#ce422b"/><rect x="3" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/><rect x="25" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/><rect x="6.5" y="6.5" width="2.5" height="2.5" rx=".5" fill="#ce422b" transform="rotate(45 7.75 7.75)"/><rect x="23" y="23" width="2.5" height="2.5" rx=".5" fill="#ce422b" transform="rotate(45 24.25 24.25)"/><rect x="6.5" y="23" width="2.5" height="2.5" rx=".5" fill="#ce422b" transform="rotate(45 7.75 24.25)"/><rect x="23" y="6.5" width="2.5" height="2.5" rx=".5" fill="#ce422b" transform="rotate(45 24.25 7.75)"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Rust — Systems language</div>
+            </div>
+          </div>
+          <!-- TypeScript -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="3" fill="#3178c6"/><path d="M7 14.5h5.4V16H10v7.5H8.5V16H7zM14.2 22.1c.4.4 1 .7 1.8.7.8 0 1.3-.4 1.3-1 0-.5-.3-.9-1.2-1.2l-.6-.2c-1.4-.5-2-1.2-2-2.3 0-1.4 1.1-2.3 2.7-2.3.8 0 1.5.2 2 .7l-.7 1c-.4-.3-.8-.5-1.3-.5-.7 0-1.1.3-1.1.9 0 .5.3.8 1.1 1.1l.6.2c1.5.5 2.1 1.3 2.1 2.4 0 1.4-1.1 2.4-2.9 2.4-.9 0-1.8-.3-2.4-.9z" fill="#fff"/></svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">TypeScript — JS preprocessor</div>
+            </div>
+          </div>
+          <!-- Java -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.3 21.5s-1.1.6.8.8c2.2.3 3.4.2 5.8-.2 0 0 .6.4 1.5.8-5.5 2.3-12.4-.1-8.1-1.4z" fill="#e76f00"/>
+              <path d="M11.6 18.7s-1.2.9.6 1.1c2.4.3 4.2.3 7.4-.4 0 0 .4.4 1.1.7-6.5 1.9-13.8.2-9.1-1.4z" fill="#e76f00"/>
+              <path d="M16.8 13.2c1.3 1.5-.4 2.9-.4 2.9s3.3-1.7 1.8-3.8c-1.4-2-2.5-3 3.4-6.4 0 0-9.2 2.3-4.8 7.3z" fill="#e76f00"/>
+              <path d="M22.8 23.3s.8.7-.9 1.2c-3.3 1-13.6 1.3-16.5.1-1-.4.9-1.1 1.5-1.2.6-.1 1-.1 1-.1-1.1-.8-7.3 1.6-3.1 2.2 11.3 1.8 20.6-.8 18-2.2z" fill="#e76f00"/>
+              <path d="M12.8 15.8s-5.2 1.2-1.8 1.7c1.4.2 4.2.1 6.8-.1 2.1-.2 4.3-.5 4.3-.5s-.8.3-1.3.7c-5.3 1.4-15.5.8-12.6-.7 2.5-1.2 4.6-.9 4.6-.9z" fill="#5482a3"/>
+              <path d="M20 19.8c5.4-2.8 2.9-5.5 1.2-5.1-.4.1-.6.2-.6.2s.2-.3.5-.4c3.5-1.2 6.2 3.6-1.1 5.5 0 0 .1-.1 0-.2z" fill="#5482a3"/>
+              <path d="M18.1 3s3 3-2.8 7.5c-4.6 3.7-1.1 5.8 0 8.2-2.7-2.4-4.7-4.6-3.4-6.6 2-3 7.5-4.4 6.2-9.1z" fill="#e76f00"/>
+              <path d="M13.3 28.3c5.2.3 13.1-.2 13.3-2.5 0 0-.4 1-4.3 1.7-4.4.9-9.9.8-13.1.2 0 0 .7.5 4.1.6z" fill="#5482a3"/>
+            </svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Java — General purpose</div>
+            </div>
+          </div>
+          <!-- Kotlin -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="kgrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#E44857"/>
+                  <stop offset="50%" stop-color="#C711E1"/>
+                  <stop offset="100%" stop-color="#7F52FF"/>
+                </linearGradient>
+              </defs>
+              <rect width="32" height="32" rx="4" fill="url(#kgrad)"/>
+              <polygon points="4,4 18,18 4,28" fill="#fff"/>
+              <polygon points="18,4 28,4 18,18" fill="#fff"/>
+              <polygon points="18,18 28,28 18,28" fill="#fff"/>
+            </svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Kotlin — General purpose</div>
+            </div>
+          </div>
+          <!-- JSON -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="4" fill="#1a1a1a"/>
+              <text x="16" y="21" text-anchor="middle" font-size="11" font-weight="900" font-family="monospace,Arial" fill="#f7df1e">{}</text>
+            </svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">JSON — Data format</div>
+            </div>
+          </div>
+          <!-- Minecraft Skript -->
+          <div class="hero-lang-icon">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+              <rect width="32" height="32" rx="4" fill="#4a7c40"/>
+              <rect x="0" y="0" width="32" height="2" fill="#2d5c2a"/>
+              <rect x="0" y="30" width="32" height="2" fill="#2d5c2a"/>
+              <rect x="0" y="0" width="2" height="32" fill="#2d5c2a"/>
+              <rect x="30" y="0" width="2" height="32" fill="#2d5c2a"/>
+              <rect x="6" y="7" width="7" height="7" fill="#1a2a18"/>
+              <rect x="19" y="7" width="7" height="7" fill="#1a2a18"/>
+              <rect x="11" y="17" width="3" height="3" fill="#1a2a18"/>
+              <rect x="18" y="17" width="3" height="3" fill="#1a2a18"/>
+              <rect x="6" y="20" width="5" height="3" fill="#1a2a18"/>
+              <rect x="21" y="20" width="5" height="3" fill="#1a2a18"/>
+              <rect x="11" y="23" width="10" height="3" fill="#1a2a18"/>
+            </svg>
+            <div class="hero-lang-tooltip">
+              <div class="tt-name">Minecraft Skript — Plugin scripting</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="hero-tagline">
+          <span class="tl-badge tl-badge-green" data-i18n="badge_free">✓ Free Forever</span>
+          <span class="tl-badge tl-badge-blue" data-i18n="badge_noinstall">⚡ No Install</span>
+          <span class="tl-badge tl-badge-purple" data-i18n="badge_nosignup">✦ No Signup</span>
+          <span class="tl-badge" data-i18n="badge_opensource">Open Source</span>
+          <a href="https://github.com/aminkheddache-dotcom/Pterocos" target="_blank" class="tl-source">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="GitHub">
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.58 9.58 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+            <span data-i18n="badge_viewsource">View Source</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA BANNER -->
+  <section class="cta-banner">
+    <div class="cta-banner-content">
+      <h2 data-i18n="cta_title">Not just a Code Editor</h2>
+      <p data-i18n="cta_sub">The most flexible &amp; powerful browser-based development platform available — free, no install required.</p>
+      <a href="https://pterocos.eu.org/code-jc/" target="_top" class="btn-primary">
+        Start Coding
+      </a>
+    </div>
+    <div class="cta-deco" aria-hidden="true">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <rect x="20" y="20" width="70" height="70" rx="8" fill="currentColor"/>
+        <rect x="110" y="20" width="70" height="70" rx="8" fill="currentColor"/>
+        <rect x="65" y="110" width="70" height="70" rx="8" fill="currentColor"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="features-grid">
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="13" width="4" height="9" rx="1"/>
+            <rect x="9" y="8" width="4" height="14" rx="1"/>
+            <rect x="16" y="3" width="4" height="19" rx="1"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat1_title">Live Preview</h3>
+        <p data-i18n="feat1_desc">See your HTML, CSS &amp; JavaScript render in real-time as you type. No refresh, no delays — instant visual feedback.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3h6v2H5v4H3zm12 0h6v6h-2V5h-4zM3 15h2v4h4v2H3zm16 4h-4v2h6v-6h-2z"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat2_title">Multi-Language Support</h3>
+        <p data-i18n="feat2_desc">Write and run HTML/CSS/JS, SQL (SQLite), Python, and Lua — all from a single unified browser-based environment.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2H2z"/>
+            <circle cx="19" cy="7" r="3"/>
+            <path d="M22 21v-1.5a3 3 0 00-3-3h-1"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat3_title">Zero Friction</h3>
+        <p data-i18n="feat3_desc">No install, no signup, no configuration. Open your browser and start coding instantly. Works on any device.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="#3b82f6" stroke-width="2" fill="none"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="#3b82f6" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat4_title">Secure Share Links</h3>
+        <p data-i18n="feat4_desc">Share your projects instantly with password-protected links. Collaborate or showcase your work with full control.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 6L2 12l6 6M16 6l6 6-6 6M14 4l-4 16" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat5_title">Monaco Editor Engine</h3>
+        <p data-i18n="feat5_desc">Powered by the same engine as VS Code — syntax highlighting, IntelliSense, multi-cursor editing, and preprocessor support.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <h3 data-i18n="feat6_title">Works Everywhere</h3>
+        <p data-i18n="feat6_desc">Runs entirely in your browser — no server needed. Compatible with any modern browser on desktop or mobile.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- LANGUAGES -->
+  <section class="langs-section">
+    <h2 class="langs-title" data-i18n="langs_title">Languages &amp; Preprocessors</h2>
+    <p class="langs-sub" data-i18n="langs_sub">Write and run code in your browser across 13 languages — with full preprocessor support for HTML, CSS &amp; JavaScript.</p>
+
+    <div class="langs-grid">
+
+      <!-- HTML -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(227,76,38,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 2l2.4 26.7L16 31l9.6-2.3L28 2z" fill="#e34c26"/>
+              <path d="M16 28.6V4.2h9.6L24 26.4z" fill="#ef652a"/>
+              <path d="M10.4 14h5.6V10H7.2l.8 9.4h8v-3.8H9.6zm.8 5.4H7.6L8.2 25l7.8 2.2V23l-4.2-1.2z" fill="#fff"/>
+              <path d="M16 10v4h5.2l-.4 5.4H16v3.8h4.6l-.4 4.8L16 29.2V27l3.8-1.2.4-4.2H16V14h5.6l.8-9.4H16z" fill="#fff"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">HTML</div>
+            <div class="lang-type">Markup</div>
+          </div>
+        </div>
+        <div class="lang-prepros-label">Preprocessors</div>
+        <div class="lang-pills">
+          <span class="pill">Pug</span>
+          <span class="pill">Markdown</span>
+        </div>
+      </div>
+
+      <!-- CSS -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(38,77,228,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 2l2.4 26.7L16 31l9.6-2.3L28 2z" fill="#264de4"/>
+              <path d="M16 28.6V4.2h9.6L24 26.4z" fill="#2965f1"/>
+              <path d="M10.4 16.6h5.6v-3.8H9.2l-.6-5.4h15.6l-.4 3.8h-9.8v3.8h9.4l-.8 8.6-7.6 2-7.6-2-.4-5h3.8l.2 2.8 4 1 4-1 .4-4.8H10.4z" fill="#fff"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">CSS</div>
+            <div class="lang-type">Styling</div>
+          </div>
+        </div>
+        <div class="lang-prepros-label">Preprocessors</div>
+        <div class="lang-pills">
+          <span class="pill">SCSS</span>
+          <span class="pill">Sass</span>
+          <span class="pill">Less</span>
+        </div>
+      </div>
+
+      <!-- JavaScript -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(247,223,30,0.1)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="4" fill="#f7df1e"/>
+              <path d="M20.2 24.6c.6 1 1.4 1.8 2.8 1.8 1.2 0 2-.6 2-1.4 0-1-.8-1.4-2.2-2l-.8-.3c-2.2-.9-3.6-2.1-3.6-4.6 0-2.3 1.7-4 4.4-4 1.9 0 3.3.7 4.3 2.4l-2.4 1.5c-.5-.9-1.1-1.3-1.9-1.3-.9 0-1.4.5-1.4 1.3 0 .9.6 1.3 1.9 1.8l.8.3c2.6 1.1 4 2.3 4 4.8 0 2.8-2.2 4.2-5.1 4.2-2.9 0-4.7-1.4-5.6-3.2zm-11 .3c.5.8 .9 1.5 1.9 1.5.9 0 1.6-.4 1.6-1.9v-10h3v10.1c0 3.1-1.8 4.5-4.5 4.5-2.4 0-3.8-1.3-4.5-2.8z" fill="#323330"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">JavaScript</div>
+            <div class="lang-type">Scripting</div>
+          </div>
+        </div>
+        <div class="lang-prepros-label">Preprocessors</div>
+        <div class="lang-pills">
+          <span class="pill">TypeScript</span>
+          <span class="pill">JSX (React)</span>
+          <span class="pill">CoffeeScript</span>
+          <span class="pill">Babel</span>
+          <span class="pill">LiveScript</span>
+        </div>
+      </div>
+
+      <!-- Python -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(54,116,168,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15.9 2C11 2 11.3 4.1 11.3 4.1L11.3 6.3H16V7H8.5S5 6.6 5 11.6s3 4.9 3 4.9H10V14.3s-.1-3 3-3H19s2.9.1 2.9-2.8V5.6S22.4 2 15.9 2zm-1.6 1.7c.5 0 .9.4.9.9s-.4.9-.9.9-.9-.4-.9-.9.4-.9.9-.9z" fill="#3674a8"/>
+              <path d="M16.1 30c4.9 0 4.6-2.1 4.6-2.1V25.7H16V25H23.5s3.5.4 3.5-4.6-3-4.9-3-4.9H22v2.2s.1 3-3 3H13s-2.9-.1-2.9 2.8v4.9S9.6 30 16.1 30zm1.6-1.7c-.5 0-.9-.4-.9-.9s.4-.9.9-.9.9.4.9.9-.4.9-.9.9z" fill="#ffd43b"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">Python</div>
+            <div class="lang-type">General Purpose</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQL / DuckDB -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(244,161,42,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="16" cy="8" rx="11" ry="4" fill="#f4a12a"/>
+              <path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#e8920a"/>
+              <path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#d47f00"/>
+              <text x="16" y="30" text-anchor="middle" font-size="5" fill="#fff" font-family="monospace" font-weight="bold">DUCK</text>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">DuckDB</div>
+            <div class="lang-type">SQL Analytics</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQLite -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(74,144,217,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="16" cy="8" rx="11" ry="4" fill="#4a90d9"/>
+              <path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#357abd"/>
+              <path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#2a6099"/>
+              <text x="16" y="30" text-anchor="middle" font-size="5" fill="#fff" font-family="monospace" font-weight="bold">LITE</text>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">SQLite</div>
+            <div class="lang-type">SQL Database</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lua -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(0,0,128,0.25)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="#000080"/><circle cx="21" cy="11" r="4" fill="#fff"/><circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16" cy="16" r="4" fill="#fff"/></svg>
+          </div>
+          <div>
+            <div class="lang-name">Lua</div>
+            <div class="lang-type">Scripting</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Java -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(231,111,0,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.3 21.5s-1.1.6.8.8c2.2.3 3.4.2 5.8-.2 0 0 .6.4 1.5.8-5.5 2.3-12.4-.1-8.1-1.4z" fill="#e76f00"/>
+              <path d="M11.6 18.7s-1.2.9.6 1.1c2.4.3 4.2.3 7.4-.4 0 0 .4.4 1.1.7-6.5 1.9-13.8.2-9.1-1.4z" fill="#e76f00"/>
+              <path d="M16.8 13.2c1.3 1.5-.4 2.9-.4 2.9s3.3-1.7 1.8-3.8c-1.4-2-2.5-3 3.4-6.4 0 0-9.2 2.3-4.8 7.3z" fill="#e76f00"/>
+              <path d="M22.8 23.3s.8.7-.9 1.2c-3.3 1-13.6 1.3-16.5.1-1-.4.9-1.1 1.5-1.2.6-.1 1-.1 1-.1-1.1-.8-7.3 1.6-3.1 2.2 11.3 1.8 20.6-.8 18-2.2z" fill="#e76f00"/>
+              <path d="M12.8 15.8s-5.2 1.2-1.8 1.7c1.4.2 4.2.1 6.8-.1 2.1-.2 4.3-.5 4.3-.5s-.8.3-1.3.7c-5.3 1.4-15.5.8-12.6-.7 2.5-1.2 4.6-.9 4.6-.9z" fill="#5482a3"/>
+              <path d="M13.3 28.3c5.2.3 13.1-.2 13.3-2.5 0 0-.4 1-4.3 1.7-4.4.9-9.9.8-13.1.2 0 0 .7.5 4.1.6z" fill="#5482a3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">Java</div>
+            <div class="lang-type">General Purpose</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kotlin -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(127,82,255,0.15)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="kgrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#E44857"/>
+                  <stop offset="50%" stop-color="#C711E1"/>
+                  <stop offset="100%" stop-color="#7F52FF"/>
+                </linearGradient>
+              </defs>
+              <rect width="32" height="32" rx="4" fill="url(#kgrad2)"/>
+              <polygon points="4,4 18,18 4,28" fill="#fff"/>
+              <polygon points="18,4 28,4 18,18" fill="#fff"/>
+              <polygon points="18,18 28,28 18,28" fill="#fff"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">Kotlin</div>
+            <div class="lang-type">General Purpose</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rust -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(206,66,43,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="none" stroke="#ce422b" stroke-width="2.5"/><circle cx="16" cy="16" r="5" fill="#ce422b"/><rect x="14.5" y="3" width="3" height="4" rx="1" fill="#ce422b"/><rect x="14.5" y="25" width="3" height="4" rx="1" fill="#ce422b"/><rect x="3" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/><rect x="25" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/></svg>
+          </div>
+          <div>
+            <div class="lang-name">Rust</div>
+            <div class="lang-type">Systems Language</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ruby -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(204,52,45,0.12)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><polygon points="20,4 28,12 16,28 4,28 4,16" fill="#cc342d"/><polygon points="20,4 28,12 24,4" fill="#a31f1f"/><polygon points="4,28 4,16 10,22" fill="#e06b65"/><polygon points="16,28 10,22 20,18 28,12" fill="#a31f1f"/><polygon points="10,22 4,16 10,10 20,4 20,18" fill="#cc342d"/><polygon points="10,22 20,18 16,28" fill="#e8a09d"/></svg>
+          </div>
+          <div>
+            <div class="lang-name">Ruby</div>
+            <div class="lang-type">General Purpose</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PHP -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:rgba(136,146,191,0.15)">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="16" cy="16" rx="15" ry="9" fill="#8892bf"/>
+              <text x="16" y="20.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="Arial,sans-serif" fill="#fff" letter-spacing="0.5">PHP</text>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">PHP</div>
+            <div class="lang-type">Server-side Scripting</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:#1a1a1a">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="4" fill="#1a1a1a"/>
+              <text x="16" y="22" text-anchor="middle" font-size="14" font-weight="900" font-family="monospace,Arial" fill="#f7df1e">{}</text>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">JSON</div>
+            <div class="lang-type">Data Format</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Minecraft Skript -->
+      <div class="lang-card">
+        <div class="lang-header">
+          <div class="lang-icon" style="background:#2a4a24">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+              <rect width="32" height="32" rx="4" fill="#4a7c40"/>
+              <rect x="6" y="7" width="7" height="7" fill="#1a2a18"/>
+              <rect x="19" y="7" width="7" height="7" fill="#1a2a18"/>
+              <rect x="11" y="17" width="3" height="3" fill="#1a2a18"/>
+              <rect x="18" y="17" width="3" height="3" fill="#1a2a18"/>
+              <rect x="6" y="20" width="5" height="3" fill="#1a2a18"/>
+              <rect x="21" y="20" width="5" height="3" fill="#1a2a18"/>
+              <rect x="11" y="23" width="10" height="3" fill="#1a2a18"/>
+            </svg>
+          </div>
+          <div>
+            <div class="lang-name">Minecraft Skript</div>
+            <div class="lang-type">Plugin Scripting</div>
+          </div>
+        </div>
+        <div class="lang-pills">
+          <span class="pill">Skript 2.9</span>
+          <span class="pill">Skript 2.8</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing">
+    <div class="pricing-inner">
+      <div class="pricing-header">
+        <div class="pricing-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span data-i18n="pricing_badge">Simple Pricing</span>
+        </div>
+        <h2 data-i18n-html="pricing_title">Everything is <span class="hi">$0.</span><br>Free, forever.</h2>
+        <p data-i18n="pricing_sub">No plans. No tiers. No hidden fees. No credit card. Every single feature is free for everyone, always.</p>
+      </div>
+
+      <div class="pricing-split">
+        <div>
+          <div class="pricing-cards-wrap">
+            <div class="pricing-card-single">
+              <span class="pricing-plan-label" data-i18n="pricing_plan">The only plan</span>
+              <div class="pricing-amount">
+                <span class="pricing-amount-symbol">$</span>0
+              </div>
+              <p class="pricing-period" data-i18n="pricing_period">forever</p>
+              <div class="pricing-divider"></div>
+              <ul class="pricing-features">
+                <li><span class="pf-check">✓</span> <span data-i18n="pf1">Monaco / VS Code editor engine</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf2">HTML, CSS &amp; JS — instant live preview</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf3">SQL (SQLite), Python &amp; Lua — run button</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf4">13 preprocessors (SCSS, TypeScript, Babel…)</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf5">Unlimited projects &amp; saves</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf6">Backup &amp; restore</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf7">Password-protected share links</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf8">No account required</span></li>
+                <li><span class="pf-check">✓</span> <span data-i18n="pf9">Works on any device, any browser</span></li>
+              </ul>
+              <a href="https://pterocos.eu.org/code-jc/" target="_top" class="pricing-cta-btn" data-i18n="pricing_cta">Start Coding Free →</a>
+              <p class="pricing-note" data-i18n="pricing_note">No credit card. No sign-up required. Just open and build.</p>
+            </div>
+          </div>
+
+          <div class="pricing-forever-strip">
+            <div class="pfs-item"><span class="pfs-dot"></span> <span data-i18n="pfs1">No freemium bait</span></div>
+            <div class="pfs-sep"></div>
+            <div class="pfs-item"><span class="pfs-dot"></span> <span data-i18n="pfs2">No paywalled features</span></div>
+            <div class="pfs-sep"></div>
+            <div class="pfs-item"><span class="pfs-dot"></span> <span data-i18n="pfs3">No credit card ever</span></div>
+            <div class="pfs-sep"></div>
+            <div class="pfs-item"><span class="pfs-dot"></span> <span data-i18n="pfs4">Free forever</span></div>
+          </div>
+        </div>
+
+        <div class="reviews-widget">
+          <div class="reviews-title" data-i18n="reviews_title">What people are saying</div>
+          <div class="review-card">
+            <div class="review-header">
+              <div class="review-avatar">L</div>
+              <div>
+                <div class="review-name">Lachu Man Basnet</div>
+                <div class="review-role">Tech entrepreneur</div>
+              </div>
+            </div>
+            <p class="review-text">Nice idea, looks like an extremely useful tool</p>
+            <a href="https://fazier.com/launches/pterocos" target="_blank" rel="noopener" class="review-readmore">Read more at fazier.com →</a>
+          </div>
+          <div class="review-card">
+            <div class="review-header">
+              <div class="review-avatar" style="background:linear-gradient(135deg, var(--blue), var(--blue-lt));">I</div>
+              <div>
+                <div class="review-name">Ihor</div>
+                <div class="review-role">Indie Hacker</div>
+              </div>
+            </div>
+            <p class="review-text">this is pretty useful tbh. i've definitely had those moments where i just wanted to test a quick sql query or a tiny python snippet</p>
+            <a href="https://www.indiehackers.com/post/i-built-a-browser-based-editor-for-python-html-javascript-css-sql-lua-and-it-actually-works-7eL1oOh2EKuac8BAiENF" target="_blank" rel="noopener" class="review-readmore">Read More at IH →</a>
+          </div>
+          <div class="review-card">
+            <div class="review-header">
+              <div class="review-avatar" style="background:linear-gradient(135deg, var(--blue), var(--blue-lt));">I</div>
+              <div>
+                <div class="review-name">Inti David</div>
+                <div class="review-role">Reviewer</div>
+              </div>
+            </div>
+            <p class="review-text">Pterocos is an excellent online HTML, CSS, and JavaScript editor. The interface is clean and easy to use, the live preview works smoothly</p>
+            <a href="https://www.f6s.com/software/pterocos#reviews" target="_blank" rel="noopener" class="review-readmore">Read More at F6S →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURED ON -->
+  <section class="featured-section" id="featured">
+    <div class="featured-header">
+      <div class="featured-eyebrow" data-i18n="featured_eyebrow">Recognition</div>
+      <h2 data-i18n="featured_title">Trusted &amp; Featured On</h2>
+      <p data-i18n="featured_sub">Pterocos has been featured and recognized across leading developer directories, startup launch platforms, and tool discovery sites.</p>
+    </div>
+
+    <div class="featured-grid">
+      <a href="https://productfame.com/products/pterocos" target="_blank" rel="noopener" class="feat-badge-card" title="ProductFame Top 1 Daily Winner">
+        <img src="https://productfame.com/badges/top1-light.svg" alt="ProductFame Top 1 Daily Winner">
+        <span class="feat-label">ProductFame</span>
+      </a>
+      <a href="https://www.tinystartups.com/startup/pterocos" target="_blank" rel="noopener" class="feat-badge-card feat-badge-tinystartups" title="Launched on Tiny Startups">
+        <svg width="36" height="36" viewBox="0 0 100 100"><path d="M50 6C52 32 68 48 94 50C68 52 52 68 50 94C48 68 32 52 6 50C32 48 48 32 50 6Z" fill="#ffffff"/></svg>
+        <span class="feat-label" style="color:#fff;font-size:0.82rem;">Tiny Startups</span>
+      </a>
+      <a href="https://fazier.com/launches/pterocos" target="_blank" rel="noopener" class="feat-badge-card" title="Launched on Fazier">
+        <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=launched&theme=light" alt="Fazier">
+        <span class="feat-label">Fazier</span>
+      </a>
+      <a href="https://firstlook.tools" target="_blank" rel="noopener" class="feat-badge-card" title="Featured on First Look">
+        <img src="https://firstlook.tools/badge/badge_light.svg" alt="First Look Tools">
+        <span class="feat-label">First Look</span>
+      </a>
+      <a href="https://huntfortools.com" target="_blank" rel="noopener" class="feat-badge-card" title="Hunt for Tools">
+        <img src="https://huntfortools.com/assets/images/badge.png" alt="Hunt for Tools">
+        <span class="feat-label">Hunt for Tools</span>
+      </a>
+      <a href="https://dang.ai" target="_blank" rel="noopener" class="feat-badge-card" title="DANG.ai">
+        <img src="https://cdn.prod.website-files.com/63d8afd87da01fb58ea3fbcb/6487e2868c6c8f93b4828827_dang-badge.png" alt="DANG.ai">
+        <span class="feat-label">DANG.ai</span>
+      </a>
+      <a href="https://yo.directory" target="_blank" rel="noopener" class="feat-badge-card" title="yo.directory">
+        <img src="https://cdn.prod.website-files.com/65c1546fa73ea974db789e3d/65e1e171f89ebfa7bd0129ac_yodirectory-featured.png" alt="yo.directory">
+        <span class="feat-label">yo.directory</span>
+      </a>
+      <a href="https://startupfa.me" target="_blank" rel="noopener" class="feat-badge-card" title="Startup Fame">
+        <img src="https://startupfa.me/badges/featured-badge.webp" alt="Startup Fame">
+        <span class="feat-label">Startup Fame</span>
+      </a>
+      <a href="https://twelve.tools" target="_blank" rel="noopener" class="feat-badge-card" title="twelve.tools">
+        <img src="https://twelve.tools/badge0-white.svg" alt="twelve.tools">
+        <span class="feat-label">twelve.tools</span>
+      </a>
+      <a href="https://www.listbulb.com/tools/pterocos" target="_blank" rel="noopener" class="feat-badge-card" title="ListBulb">
+        <img src="https://www.listbulb.com/featured-on-listbulb-light.svg" alt="Featured on ListBulb">
+        <span class="feat-label">Featured on ListBulb</span>
+      </a>
+      <a href="https://wired.business" target="_blank" rel="noopener" class="feat-badge-card" title="Wired Business">
+        <img src="https://wired.business/badge0-white.svg" alt="Wired Business">
+        <span class="feat-label">Wired Business</span>
+      </a>
+      <a href="https://startupfa.st" target="_blank" rel="noopener" class="feat-badge-card" title="Startup Fast">
+        <img src="https://startupfa.st/images/badges/powered-by-light.svg" alt="Startup Fast">
+        <span class="feat-label">Startup Fast</span>
+      </a>
+      <a href="https://toolfinddir.com" target="_blank" rel="noopener" class="feat-badge-card" title="Tool Find Dir">
+        <img src="https://toolfinddir.com/assets/images/badge.png" alt="Tool Find Dir">
+        <span class="feat-label">Tool Find Dir</span>
+      </a>
+      <a href="https://saasdb.net" target="_blank" rel="noopener" class="feat-badge-card" title="SaaSDB">
+        <img src="https://saasdb.net/badge/featured-light.svg" alt="SaaSDB">
+        <span class="feat-label">SaaSDB</span>
+      </a>
+      <a href="https://www.foundrlist.com" target="_blank" rel="noopener" class="feat-badge-card" title="FoundrList">
+        <img src="https://www.foundrlist.com/api/badge/pterocos-2" alt="FoundrList">
+        <span class="feat-label">FoundrList</span>
+      </a>
+      <a href="https://nicklaunches.com" target="_blank" rel="noopener" class="feat-badge-card" title="Nick Launches">
+        <img src="https://nicklaunches.com/badges/featured.svg" alt="Nick Launches">
+        <span class="feat-label">Nick Launches</span>
+      </a>
+      <a href="https://postyourstartup.co" target="_blank" rel="noopener" class="feat-badge-card" title="PostYourStartup">
+        <img src="https://postyourstartup.co/api/badge/pterocos?theme=light" alt="PostYourStartup">
+        <span class="feat-label">PostYourStartup</span>
+      </a>
+      <a href="https://solvertools.com" target="_blank" rel="noopener" class="feat-badge-card" title="Solver Tools">
+        <img src="https://solvertools.com/assets/images/badge.png" alt="Solver Tools">
+        <span class="feat-label">Solver Tools</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- DISCORD PARTNERS SECTION -->
+  <section class="discord-partners-section" id="discord-partners">
+    <div class="discord-partners-eyebrow" data-i18n="discord_eyebrow">Community</div>
+    <h2 class="discord-partners-title" data-i18n="discord_title">Discord Partners</h2>
+    <p class="discord-partners-subtitle" data-i18n="discord_sub">Communities that partner with Pterocos — sharing resources, tutorials, and support for developers of all levels.</p>
+    <div class="discord-partners-grid">
+
+
+      <div class="discord-partner-card">
+        <img class="dp-avatar" src="https://pterocos.eu.org/wp-content/uploads/2026/05/Learn_to_Code.webp" alt="LTC logo">
+        <div>
+          <p class="dp-name">LTC</p>
+          <span class="dp-badge dp-badge-partner" data-i18n="dp_partner_badge">Partner</span>
+        </div>
+        <p class="dp-desc" data-i18n="dp_ltc_desc">A thriving Discord community for developers and learners — join to connect, collaborate, and grow your coding skills together.</p>
+        <a href="https://discord.gg/sYGQw8Xfr4" target="_blank" rel="noopener" class="dp-join-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/></svg>
+          <span data-i18n="join_server">Join Server</span>
+        </a>
+      </div>
+
+      <div class="discord-partner-card">
+        <img class="dp-avatar" src="https://pterocos.eu.org/wp-content/uploads/2026/04/363be6d46e0eb5b4b2f571e62b3fc5b4.jpg" alt="Coding Central logo">
+        <div>
+          <p class="dp-name">Coding Central</p>
+          <span class="dp-badge dp-badge-partner" data-i18n="dp_partner_badge">Partner</span>
+        </div>
+        <p class="dp-desc" data-i18n="dp_coding_desc">A welcoming server for coders of all levels — share projects, get help, and connect with a passionate developer community.</p>
+        <a href="https://discord.gg/sMhHHKpvHh" target="_blank" rel="noopener" class="dp-join-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/></svg>
+          <span data-i18n="join_server">Join Server</span>
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div style="display:flex;gap:8px;position:absolute;bottom:32px;left:200px;">
+      <a href="https://discord.gg/7bGKHu3gaz" target="_blank" rel="noopener" class="footer-discord" style="padding:8px;">
+        <svg viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;fill:currentColor;flex-shrink:0"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+      </a>
+      <a href="https://www.linkedin.com/company/121433986/" target="_blank" rel="noopener" class="footer-stars" style="padding:8px;background:#fff;">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;fill:#0a66c2;flex-shrink:0"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124zM7.119 20.452H3.554V9h3.565v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      </a>
+    </div>
+    <div class="footer-quote">
+      <span class="quote-mark">"</span>
+      <span>
+        <span data-i18n="footer_quote">The simplicity of getting a full-featured code environment in the browser is incredible. Pterocos makes it effortless to prototype and share ideas —</span>
+        <a href="https://pterocos.eu.org/pterocose/" target="_blank" data-i18n="footer_quote_link">try it yourself</a>.
+      </span>
+    </div>
+    <div class="footer-info">
+      <div data-i18n="footer_copyright">Copyright &copy; 2025–2026 Pterocos</div>
+      <div><span data-i18n="footer_rights">All rights reserved</span> &nbsp;|&nbsp;
+        <a onclick="openLegal('tos');return false;" href="#" data-i18n="footer_tos">Terms of Service</a> &nbsp;|&nbsp;
+        <a onclick="openLegal('privacy');return false;" href="#" data-i18n="footer_privacy">Privacy Policy</a>
+      </div>
+      <div style="margin-top:4px;opacity:0.6">pterocos.eu.org</div>
+    </div>
+  </footer>
+
+  <!-- COOKIE CONSENT BANNER -->
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-banner-text">
+      <span data-i18n="cookie_text">By using Pterocos, you accept our use of cookies and third-party services (Google Fonts, GitHub API, Discord, directory badge CDNs, and editor CDNs). These services may collect data per their own privacy policies.</span>
+      <a onclick="openLegal('privacy');return false;" href="#" data-i18n="cookie_learn">Learn more in our Privacy Policy.</a>
+    </div>
+    <div class="cookie-banner-actions">
+      <button class="cookie-learn-btn" onclick="openLegal('privacy')" data-i18n="cookie_privacy_btn">Privacy Policy</button>
+      <button class="cookie-accept-btn" onclick="acceptCookies()" data-i18n="cookie_accept">Accept &amp; Continue</button>
+    </div>
+  </div>
+
+  <!-- CONTACT POPUP -->
+  <div class="contact-overlay" id="contactOverlay" onclick="if(event.target===this)closeContactPopup()">
+    <div class="contact-modal">
+      <button class="contact-modal-close" onclick="closeContactPopup()" aria-label="Close">&times;</button>
+      <div class="contact-modal-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3 data-i18n="contact_title">Get in Touch</h3>
+      <p data-i18n="contact_sub">Have a question, idea, or partnership proposal? Reach us by email or join our Discord community.</p>
+      <a href="mailto:pterocos-php@outlook.com" class="contact-option">
+        <div class="contact-option-icon email">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        </div>
+        <div>
+          <div class="contact-option-label" data-i18n="contact_email_label">Email us</div>
+          <div class="contact-option-value">pterocos-php@outlook.com</div>
+        </div>
+      </a>
+      <a href="https://discord.gg/7bGKHu3gaz" target="_blank" rel="noopener" class="contact-option">
+        <div class="contact-option-icon discord">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#5865f2"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/></svg>
+        </div>
+        <div>
+          <div class="contact-option-label" data-i18n="contact_discord_label">Join our Discord</div>
+          <div class="contact-option-value">discord.gg/7bGKHu3gaz</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- TERMS OF SERVICE MODAL -->
+  <div class="legal-overlay" id="tosOverlay" onclick="if(event.target===this)closeLegal('tos')">
+    <div class="legal-modal">
+      <div class="legal-modal-header">
+        <h2>Terms of Service</h2>
+        <button class="legal-modal-close" onclick="closeLegal('tos')" aria-label="Close">&times;</button>
+      </div>
+      <div class="legal-modal-body">
+        <p class="legal-modal-updated">Last updated: July 12, 2026</p>
+
+        <h3>1. Acceptance of Terms</h3>
+        <p>By accessing or using Pterocos ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.</p>
+
+        <h3>2. Description of Service</h3>
+        <p>Pterocos is a free, browser-based code editor that allows you to write and run code in multiple programming languages including HTML, CSS, JavaScript, Python, SQL, Lua, Java, Kotlin, Rust, Ruby, PHP, C#, JSON, and Minecraft Skript, entirely within your web browser.</p>
+
+        <h3>3. Use of the Service</h3>
+        <p>You agree to use the Service only for lawful purposes. You must not use the Service to:</p>
+        <ul>
+          <li>Create, share, or distribute malicious code, malware, or harmful scripts</li>
+          <li>Publish content that is illegal, defamatory, obscene, or infringes on intellectual property rights</li>
+          <li>Attempt to disrupt, interfere with, or gain unauthorized access to any system or network</li>
+          <li>Share content containing hate speech, harassment, or explicit material</li>
+          <li>Impersonate any person or entity</li>
+          <li>Violate any applicable local, national, or international law or regulation</li>
+        </ul>
+
+        <h3>4. Shared Projects</h3>
+        <p>When you use the project sharing feature, you are solely responsible for the content you share. Pterocos reserves the right to remove shared projects that violate these Terms. Shared projects are subject to content moderation to ensure compliance with our policies.</p>
+
+        <h3>5. Intellectual Property</h3>
+        <p>You retain ownership of any code you write using the Service. By using the sharing feature, you grant Pterocos a non-exclusive, royalty-free license to host and display your shared content solely for the purpose of providing the Service.</p>
+
+        <h3>6. No Warranty</h3>
+        <p>The Service is provided "as is" without warranties of any kind, express or implied. Pterocos does not guarantee that the Service will be uninterrupted, error-free, or free of harmful components.</p>
+
+        <h3>7. Limitation of Liability</h3>
+        <p>To the fullest extent permitted by law, Pterocos shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of or inability to use the Service.</p>
+
+        <h3>8. Modifications to Terms</h3>
+        <p>Pterocos reserves the right to modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the updated Terms.</p>
+
+        <h3>9. Contact</h3>
+        <p>For questions about these Terms, contact us at <strong>pterocos-php@outlook.com</strong> or join our Discord community at <strong>discord.gg/7bGKHu3gaz</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY MODAL -->
+  <div class="legal-overlay" id="privacyOverlay" onclick="if(event.target===this)closeLegal('privacy')">
+    <div class="legal-modal">
+      <div class="legal-modal-header">
+        <h2>Privacy Policy</h2>
+        <button class="legal-modal-close" onclick="closeLegal('privacy')" aria-label="Close">&times;</button>
+      </div>
+      <div class="legal-modal-body">
+        <p class="legal-modal-updated">Last updated: July 12, 2026</p>
+
+        <h3>1. Overview</h3>
+        <p>Pterocos is designed with privacy in mind. We do not require you to create an account to use the Service. Your code and projects are stored locally in your browser using localStorage.</p>
+
+        <h3>2. Information We Collect</h3>
+        <p>We collect minimal information to operate the Service:</p>
+        <ul>
+          <li><strong>Usage data:</strong> Anonymous aggregate data about which features are used, collected through standard web analytics.</li>
+          <li><strong>IP address:</strong> Your IP address may be logged temporarily for security purposes (e.g., rate-limiting abuse of the share feature). IP addresses are hashed and not stored in readable form.</li>
+          <li><strong>Shared project content:</strong> If you use the project sharing feature, the content you share is stored on our servers to generate your share link. You may include an optional display name.</li>
+        </ul>
+
+        <h3>3. Local Storage</h3>
+        <p>Your projects, settings, and preferences are stored in your browser's localStorage. This data never leaves your device unless you explicitly use the share feature. You can clear this data at any time through your browser settings.</p>
+
+        <h3>4. How We Use Your Information</h3>
+        <p>Any information we collect is used solely to:</p>
+        <ul>
+          <li>Operate and maintain the Service</li>
+          <li>Prevent abuse and enforce our Terms of Service</li>
+          <li>Improve the Service based on usage patterns</li>
+          <li>Respond to support requests</li>
+        </ul>
+
+        <h3>5. Cookies</h3>
+        <p>Pterocos uses cookies to operate the Service. By using Pterocos, you consent to our use of cookies. These include:</p>
+        <ul>
+          <li><strong>Essential cookies:</strong> Required for the Service to function correctly (e.g., session state).</li>
+          <li><strong>Third-party cookies:</strong> Some features rely on third-party services (see Section 6 below) that may set their own cookies. We do not control these cookies.</li>
+        </ul>
+        <p>You can disable cookies in your browser settings, but doing so may affect the functionality of the Service.</p>
+
+        <h3>6. Third-Party Services</h3>
+        <p>Pterocos uses the following third-party services to deliver the Service. By using Pterocos, you acknowledge and accept that these services may collect data according to their own privacy policies:</p>
+        <ul>
+          <li><strong>Google Fonts</strong> — used to load the Inter typeface. Google may log requests to its font servers. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--blue);">Google's Privacy Policy</a>.</li>
+          <li><strong>GitHub API</strong> — used to display the live star count for the Pterocos open-source repository.</li>
+          <li><strong>WordPress / pterocos.eu.org</strong> — images and screenshots shown on the landing page are served from our WordPress hosting.</li>
+          <li><strong>Third-party badge providers</strong> — directory and recognition badges (e.g., ProductFame, Fazier, SaaSDB) are loaded from their respective CDNs and may log requests.</li>
+          <li><strong>Editor CDNs</strong> — the Monaco editor engine and language runtimes (e.g., Python via Pyodide, SQL engines) are loaded from public CDNs such as cdnjs, jsDelivr, and unpkg. These CDNs may log request metadata.</li>
+          <li><strong>Discord</strong> — if you click a Discord link or join our server, Discord's own privacy policy applies.</li>
+        </ul>
+        <p>We are not responsible for the privacy practices of these third-party services. We encourage you to review their policies.</p>
+
+        <h3>7. Data Sharing</h3>
+        <p>We do not sell, trade, or otherwise transfer your personal information to third parties beyond those listed in Section 6 above. We may share information only when required by law or to protect the rights and safety of our users.</p>
+
+        <h3>8. Data Retention</h3>
+        <p>Shared project data is retained as long as the share link is active. Security logs (IP hashes) are retained for a maximum of 30 days and then automatically deleted.</p>
+
+        <h3>9. Children's Privacy</h3>
+        <p>The Service is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal information, please contact us so we can delete it.</p>
+
+        <h3>10. Changes to This Policy</h3>
+        <p>We may update this Privacy Policy from time to time. We will notify users of significant changes by updating the date at the top of this page.</p>
+
+        <h3>11. Contact</h3>
+        <p>For privacy-related questions or requests, contact us at <strong>pterocos-php@outlook.com</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── UI LANGUAGE SELECTOR ── */
+    const I18N = {
+      en: {
+        nav_home:'Home', nav_features:'Features', nav_pricing:'Pricing', nav_featured:'Featured On', nav_partners:'Partners', nav_contact:'Contact', nav_support:'Support', nav_start:'Start Coding',
+        hero_eyebrow:'Free forever, no signup required \u2192', hero_title:'Online Code Editor', hero_sub:'Start coding instantly \u2014 no install, no signup. Just use pterocos and build.', hero_action_label:'Get Started', hero_btn:"Let's go", hero_search_ph:'Search languages & preprocessors\u2026', hero_selected:'Selected:', hero_folder_btn:"Let's create your first folder", hero_runs:'Runs\u00a0',
+        badge_free:'\u2713 Free Forever', badge_noinstall:'\u26a1 No Install', badge_nosignup:'\u2746 No Signup', badge_opensource:'Open Source', badge_viewsource:'View Source',
+        cta_title:'Not just a Code Editor', cta_sub:'The most flexible & powerful browser-based development platform available \u2014 free, no install required.', cta_btn:'Start Coding',
+        feat1_title:'Live Preview', feat1_desc:'See your HTML, CSS & JavaScript render in real-time as you type. No refresh, no delays \u2014 instant visual feedback.', feat2_title:'Multi-Language Support', feat2_desc:'Write and run HTML/CSS/JS, SQL (SQLite), Python, and Lua \u2014 all from a single unified browser-based environment.', feat3_title:'Zero Friction', feat3_desc:'No install, no signup, no configuration. Open your browser and start coding instantly. Works on any device.', feat4_title:'Secure Share Links', feat4_desc:'Share your projects instantly with password-protected links. Collaborate or showcase your work with full control.', feat5_title:'Monaco Editor Engine', feat5_desc:'Powered by the same engine as VS Code \u2014 syntax highlighting, IntelliSense, multi-cursor editing, and preprocessor support.', feat6_title:'Works Everywhere', feat6_desc:'Runs entirely in your browser \u2014 no server needed. Compatible with any modern browser on desktop or mobile.',
+        langs_title:'Languages & Preprocessors', langs_sub:'Write and run code in your browser across 13 languages \u2014 with full preprocessor support for HTML, CSS & JavaScript.',
+        pricing_badge:'Simple Pricing', pricing_title:'Everything is <span class="hi">$0.</span><br>Free, forever.', pricing_sub:'No plans. No tiers. No hidden fees. No credit card. Every single feature is free for everyone, always.', pricing_plan:'The only plan', pricing_period:'forever',
+        pf1:'Monaco / VS Code editor engine', pf2:'HTML, CSS & JS \u2014 instant live preview', pf3:'SQL (SQLite), Python & Lua \u2014 run button', pf4:'13 preprocessors (SCSS, TypeScript, Babel\u2026)', pf5:'Unlimited projects & saves', pf6:'Backup & restore', pf7:'Password-protected share links', pf8:'No account required', pf9:'Works on any device, any browser',
+        pricing_cta:'Start Coding Free \u2192', pricing_note:'No credit card. No sign-up required. Just open and build.',
+        pfs1:'No freemium bait', pfs2:'No paywalled features', pfs3:'No credit card ever', pfs4:'Free forever',
+        reviews_title:'What people are saying', featured_eyebrow:'Recognition', featured_title:'Trusted & Featured On', featured_sub:'Pterocos has been featured and recognized across leading developer directories, startup launch platforms, and tool discovery sites.',
+        discord_eyebrow:'Community', discord_title:'Discord Partners', discord_sub:'Communities that partner with Pterocos \u2014 sharing resources, tutorials, and support for developers of all levels.',
+        dp_official_badge:'Official', dp_partner_badge:'Partner', dp_official_desc:'The main Pterocose community \u2014 get support, share projects, report bugs, and connect with developers and learners from around the world.', dp_ltc_desc:'A thriving Discord community for developers and learners \u2014 join to connect, collaborate, and grow your coding skills together.', dp_coding_desc:'A welcoming server for coders of all levels \u2014 share projects, get help, and connect with a passionate developer community.', join_server:'Join Server',
+        footer_quote:'The simplicity of getting a full-featured code environment in the browser is incredible. Pterocos makes it effortless to prototype and share ideas \u2014', footer_quote_link:'try it yourself', footer_copyright:'Copyright \u00a9 2025\u20132026 Pterocos', footer_rights:'All rights reserved', footer_tos:'Terms of Service', footer_privacy:'Privacy Policy',
+        cookie_text:'By using Pterocos, you accept our use of cookies and third-party services (Google Fonts, GitHub API, Discord, directory badge CDNs, and editor CDNs). These services may collect data per their own privacy policies.', cookie_learn:'Learn more in our Privacy Policy.', cookie_privacy_btn:'Privacy Policy', cookie_accept:'Accept & Continue',
+        contact_title:'Get in Touch', contact_sub:'Have a question, idea, or partnership proposal? Reach us by email or join our Discord community.', contact_email_label:'Email us', contact_discord_label:'Join our Discord',
+        picker_languages:'Languages', picker_preprocessors:'Preprocessors', picker_no_results:'No results found',
+      },
+      ar: {
+        nav_home:'\u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629', nav_features:'\u0627\u0644\u0645\u064a\u0632\u0627\u062a', nav_pricing:'\u0627\u0644\u0623\u0633\u0639\u0627\u0631', nav_featured:'\u0645\u0645\u064a\u0632 \u0641\u064a', nav_partners:'\u0627\u0644\u0634\u0631\u0643\u0627\u0621', nav_contact:'\u062a\u0648\u0627\u0635\u0644', nav_support:'\u0627\u0644\u062f\u0639\u0645', nav_start:'\u0627\u0628\u062f\u0623 \u0627\u0644\u0628\u0631\u0645\u062c\u0629',
+        hero_eyebrow:'\u0645\u062c\u0627\u0646\u064a \u0644\u0644\u0623\u0628\u062f\u060c \u0644\u0627 \u062a\u0633\u062c\u064a\u0644 \u0645\u0637\u0644\u0648\u0628 \u2192', hero_title:'\u0645\u062d\u0631\u0631 \u0627\u0644\u0643\u0648\u062f \u0639\u0628\u0631 \u0627\u0644\u0625\u0646\u062a\u0631\u0646\u062a', hero_sub:'\u0627\u0628\u062f\u0623 \u0627\u0644\u0628\u0631\u0645\u062c\u0629 \u0641\u0648\u0631\u0627\u064b \u2014 \u0628\u062f\u0648\u0646 \u062a\u062b\u0628\u064a\u062a\u060c \u0628\u062f\u0648\u0646 \u062a\u0633\u062c\u064a\u0644. \u0641\u0642\u0637 \u0627\u0633\u062a\u062e\u062f\u0645 Pterocos \u0648\u0627\u0628\u0646\u0650.', hero_action_label:'\u0627\u0628\u062f\u0623 \u0627\u0644\u0622\u0646', hero_btn:'\u0647\u064a\u0627 \u0628\u0646\u0627', hero_search_ph:'\u0627\u0628\u062d\u062b \u0639\u0646 \u0644\u063a\u0627\u062a \u0648\u0645\u0639\u0627\u0644\u062c\u0627\u062a\u2026', hero_selected:'\u0627\u0644\u0645\u062d\u062f\u062f:', hero_folder_btn:'\u0644\u0646\u0646\u0634\u0626 \u0645\u062c\u0644\u062f\u0643 \u0627\u0644\u0623\u0648\u0644', hero_runs:'\u064a\u062f\u0639\u0645\u00a0',
+        badge_free:'\u2713 \u0645\u062c\u0627\u0646\u064a \u0644\u0644\u0623\u0628\u062f', badge_noinstall:'\u26a1 \u0628\u062f\u0648\u0646 \u062a\u062b\u0628\u064a\u062a', badge_nosignup:'\u2726 \u0628\u062f\u0648\u0646 \u062a\u0633\u062c\u064a\u0644', badge_opensource:'\u0645\u0641\u062a\u0648\u062d \u0627\u0644\u0645\u0635\u062f\u0631', badge_viewsource:'\u0639\u0631\u0636 \u0627\u0644\u0645\u0635\u062f\u0631',
+        cta_title:'\u0623\u0643\u062b\u0631 \u0645\u0646 \u0645\u062c\u0631\u062f \u0645\u062d\u0631\u0631 \u0643\u0648\u062f', cta_sub:'\u0627\u0644\u0645\u0646\u0635\u0629 \u0627\u0644\u0623\u0643\u062b\u0631 \u0645\u0631\u0648\u0646\u0629 \u0648\u0642\u0648\u0629 \u2014 \u0645\u062c\u0627\u0646\u064a\u0629\u060c \u0628\u062f\u0648\u0646 \u062a\u062b\u0628\u064a\u062a.', cta_btn:'\u0627\u0628\u062f\u0623 \u0627\u0644\u0628\u0631\u0645\u062c\u0629',
+        feat1_title:'\u0645\u0639\u0627\u064a\u0646\u0629 \u0645\u0628\u0627\u0634\u0631\u0629', feat1_desc:'\u0634\u0627\u0647\u062f HTML \u0648CSS \u0648JavaScript \u0641\u064a \u0627\u0644\u0648\u0642\u062a \u0627\u0644\u0641\u0639\u0644\u064a. \u0628\u062f\u0648\u0646 \u062a\u062d\u062f\u064a\u062b\u060c \u0628\u062f\u0648\u0646 \u062a\u0623\u062e\u064a\u0631.', feat2_title:'\u062f\u0639\u0645 \u0645\u062a\u0639\u062f\u062f \u0627\u0644\u0644\u063a\u0627\u062a', feat2_desc:'\u0627\u0643\u062a\u0628 \u0648\u0634\u063a\u0651\u0644 HTML/CSS/JS \u0648SQL \u0648Python \u0648Lua \u2014 \u0643\u0644 \u0630\u0644\u0643 \u0645\u0646 \u0628\u064a\u0626\u0629 \u0645\u0648\u062d\u062f\u0629.', feat3_title:'\u0628\u062f\u0648\u0646 \u0623\u064a \u062a\u0639\u0642\u064a\u062f', feat3_desc:'\u0628\u062f\u0648\u0646 \u062a\u062b\u0628\u064a\u062a\u060c \u0628\u062f\u0648\u0646 \u062a\u0633\u062c\u064a\u0644. \u0627\u0641\u062a\u062d \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0648\u0627\u0628\u062f\u0623 \u0641\u0648\u0631\u0627\u064b.', feat4_title:'\u0631\u0648\u0627\u0628\u0637 \u0645\u0634\u0627\u0631\u0643\u0629 \u0622\u0645\u0646\u0629', feat4_desc:'\u0634\u0627\u0631\u0643 \u0645\u0634\u0627\u0631\u064a\u0639\u0643 \u0628\u0631\u0648\u0627\u0628\u0637 \u0645\u062d\u0645\u064a\u0629 \u0628\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631.', feat5_title:'\u0645\u062d\u0631\u0643 Monaco', feat5_desc:'\u0645\u062f\u0639\u0648\u0645 \u0628\u0646\u0641\u0633 \u0645\u062d\u0631\u0643 VS Code \u2014 \u062a\u0645\u064a\u064a\u0632 \u0627\u0644\u0635\u064a\u0627\u063a\u0629 \u0648IntelliSense.', feat6_title:'\u064a\u0639\u0645\u0644 \u0641\u064a \u0643\u0644 \u0645\u0643\u0627\u0646', feat6_desc:'\u064a\u0639\u0645\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0641\u064a \u0645\u062a\u0635\u0641\u062d\u0643 \u2014 \u0644\u0627 \u062e\u0627\u062f\u0645 \u0645\u0637\u0644\u0648\u0628.',
+        langs_title:'\u0627\u0644\u0644\u063a\u0627\u062a \u0648\u0627\u0644\u0645\u0639\u0627\u0644\u062c\u0627\u062a', langs_sub:'\u0627\u0643\u062a\u0628 \u0648\u0634\u063a\u0651\u0644 \u0627\u0644\u0643\u0648\u062f \u0628\u0640 13 \u0644\u063a\u0629 \u2014 \u0645\u0639 \u062f\u0639\u0645 \u0643\u0627\u0645\u0644 \u0644\u0644\u0645\u0639\u0627\u0644\u062c\u0627\u062a.',
+        pricing_badge:'\u0623\u0633\u0639\u0627\u0631 \u0628\u0633\u064a\u0637\u0629', pricing_title:'\u0643\u0644 \u0634\u064a\u0621 \u0628\u0640 <span class="hi">$0.</span><br>\u0645\u062c\u0627\u0646\u064a\u060c \u0644\u0644\u0623\u0628\u062f.', pricing_sub:'\u0644\u0627 \u062e\u0637\u0637. \u0644\u0627 \u0645\u0633\u062a\u0648\u064a\u0627\u062a. \u0644\u0627 \u0631\u0633\u0648\u0645 \u062e\u0641\u064a\u0629. \u0644\u0627 \u0628\u0637\u0627\u0642\u0629 \u0627\u0626\u062a\u0645\u0627\u0646.', pricing_plan:'\u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0648\u062d\u064a\u062f\u0629', pricing_period:'\u0644\u0644\u0623\u0628\u062f',
+        pf1:'Monaco / VS Code \u0645\u062d\u0631\u0643 \u0627\u0644\u0645\u062d\u0631\u0631', pf2:'HTML \u0648CSS \u0648JS \u2014 \u0645\u0639\u0627\u064a\u0646\u0629 \u0641\u0648\u0631\u064a\u0629', pf3:'SQL \u0648Python \u0648Lua \u2014 \u0632\u0631 \u062a\u0634\u063a\u064a\u0644', pf4:'13 \u0645\u0639\u0627\u0644\u062c\u0627\u064b', pf5:'\u0645\u0634\u0627\u0631\u064a\u0639 \u0648\u062d\u0641\u0638 \u063a\u064a\u0631 \u0645\u062d\u062f\u0648\u062f', pf6:'\u0646\u0633\u062e \u0627\u062d\u062a\u064a\u0627\u0637\u064a', pf7:'\u0631\u0648\u0627\u0628\u0637 \u0645\u062d\u0645\u064a\u0629', pf8:'\u0644\u0627 \u062d\u0633\u0627\u0628 \u0645\u0637\u0644\u0648\u0628', pf9:'\u064a\u0639\u0645\u0644 \u0639\u0644\u0649 \u0623\u064a \u062c\u0647\u0627\u0632',
+        pricing_cta:'\u0627\u0628\u062f\u0623 \u0627\u0644\u0628\u0631\u0645\u062c\u0629 \u0645\u062c\u0627\u0646\u0627\u064b \u2190', pricing_note:'\u0644\u0627 \u0628\u0637\u0627\u0642\u0629. \u0644\u0627 \u062a\u0633\u062c\u064a\u0644. \u0641\u0642\u0637 \u0627\u0641\u062a\u062d \u0648\u0627\u0628\u0646\u0650.',
+        pfs1:'\u0644\u0627 \u0625\u063a\u0631\u0627\u0621', pfs2:'\u0644\u0627 \u0645\u064a\u0632\u0627\u062a \u0645\u062f\u0641\u0648\u0639\u0629', pfs3:'\u0644\u0627 \u0628\u0637\u0627\u0642\u0629 \u0623\u0628\u062f\u0627\u064b', pfs4:'\u0645\u062c\u0627\u0646\u064a \u0644\u0644\u0623\u0628\u062f',
+        reviews_title:'\u0645\u0627\u0630\u0627 \u064a\u0642\u0648\u0644 \u0627\u0644\u0646\u0627\u0633', featured_eyebrow:'\u062a\u0642\u062f\u064a\u0631', featured_title:'\u0645\u0648\u062b\u0648\u0642 \u0628\u0647 \u0648\u0645\u0645\u064a\u0632', featured_sub:'Pterocos \u062a\u0645 \u0639\u0631\u0636\u0647 \u0641\u064a \u0623\u062f\u0644\u0629 \u0627\u0644\u0645\u0637\u0648\u0631\u064a\u0646 \u0627\u0644\u0628\u0627\u0631\u0632\u0629.',
+        discord_eyebrow:'\u0645\u062c\u062a\u0645\u0639', discord_title:'\u0634\u0631\u0643\u0627\u0621 Discord', discord_sub:'\u0645\u062c\u062a\u0645\u0639\u0627\u062a \u062a\u062a\u0634\u0627\u0631\u0643 \u0645\u0639 Pterocos \u2014 \u062a\u0634\u0627\u0631\u0643 \u0627\u0644\u0645\u0648\u0627\u0631\u062f \u0648\u0627\u0644\u062f\u0639\u0645.',
+        dp_official_badge:'\u0631\u0633\u0645\u064a', dp_partner_badge:'\u0634\u0631\u064a\u0643', dp_official_desc:'\u0627\u0644\u0645\u062c\u062a\u0645\u0639 \u0627\u0644\u0631\u0626\u064a\u0633\u064a \u2014 \u0627\u062d\u0635\u0644 \u0639\u0644\u0649 \u0627\u0644\u062f\u0639\u0645 \u0648\u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0645\u0637\u0648\u0631\u064a\u0646.', dp_ltc_desc:'\u0645\u062c\u062a\u0645\u0639 Discord \u0644\u0644\u0645\u0637\u0648\u0631\u064a\u0646 \u0648\u0627\u0644\u0645\u062a\u0639\u0644\u0645\u064a\u0646.', dp_coding_desc:'\u062e\u0627\u062f\u0645 \u0644\u0644\u0645\u0628\u0631\u0645\u062c\u064a\u0646 \u0645\u0646 \u062c\u0645\u064a\u0639 \u0627\u0644\u0645\u0633\u062a\u0648\u064a\u0627\u062a.', join_server:'\u0627\u0646\u0636\u0645 \u0644\u0644\u062e\u0627\u062f\u0645',
+        footer_quote:'\u0628\u0633\u0627\u0637\u0629 \u0627\u0644\u062d\u0635\u0648\u0644 \u0639\u0644\u0649 \u0628\u064a\u0626\u0629 \u0628\u0631\u0645\u062c\u0629 \u0643\u0627\u0645\u0644\u0629 \u0641\u064a \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0623\u0645\u0631 \u0644\u0627 \u064a\u0635\u062f\u0642 \u2014', footer_quote_link:'\u062c\u0631\u0628\u0647 \u0628\u0646\u0641\u0633\u0643', footer_copyright:'\u062d\u0642\u0648\u0642 \u0627\u0644\u0646\u0634\u0631 \u00a9 2025\u20132026 Pterocos', footer_rights:'\u062c\u0645\u064a\u0639 \u0627\u0644\u062d\u0642\u0648\u0642 \u0645\u062d\u0641\u0648\u0638\u0629', footer_tos:'\u0634\u0631\u0648\u0637 \u0627\u0644\u062e\u062f\u0645\u0629', footer_privacy:'\u0633\u064a\u0627\u0633\u0629 \u0627\u0644\u062e\u0635\u0648\u0635\u064a\u0629',
+        cookie_text:'\u0628\u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0643 Pterocos\u060c \u062a\u0648\u0627\u0641\u0642 \u0639\u0644\u0649 \u0627\u0633\u062a\u062e\u062f\u0627\u0645\u0646\u0627 \u0644\u0645\u0644\u0641\u0627\u062a \u062a\u0639\u0631\u064a\u0641 \u0627\u0644\u0627\u0631\u062a\u0628\u0627\u0637 \u0648\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0637\u0631\u0641 \u0627\u0644\u062b\u0627\u0644\u062b.', cookie_learn:'\u0627\u0642\u0631\u0623 \u0627\u0644\u0645\u0632\u064a\u062f \u0641\u064a \u0633\u064a\u0627\u0633\u0629 \u0627\u0644\u062e\u0635\u0648\u0635\u064a\u0629.', cookie_privacy_btn:'\u0633\u064a\u0627\u0633\u0629 \u0627\u0644\u062e\u0635\u0648\u0635\u064a\u0629', cookie_accept:'\u0642\u0628\u0648\u0644 \u0648\u0645\u062a\u0627\u0628\u0639\u0629',
+        contact_title:'\u062a\u0648\u0627\u0635\u0644 \u0645\u0639\u0646\u0627', contact_sub:'\u0647\u0644 \u0644\u062f\u064a\u0643 \u0633\u0624\u0627\u0644 \u0623\u0648 \u0641\u0643\u0631\u0629\u061f \u062a\u0648\u0627\u0635\u0644 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064a\u062f \u0623\u0648 Discord.', contact_email_label:'\u0631\u0627\u0633\u0644\u0646\u0627', contact_discord_label:'\u0627\u0646\u0636\u0645 \u0625\u0644\u0649 Discord',
+        picker_languages:'\u0627\u0644\u0644\u063a\u0627\u062a', picker_preprocessors:'\u0627\u0644\u0645\u0639\u0627\u0644\u062c\u0627\u062a', picker_no_results:'\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c',
+      },
+      ur: {
+        nav_home:'\u06c1\u0648\u0645', nav_features:'\u062e\u0635\u0648\u0635\u06cc\u0627\u062a', nav_pricing:'\u0642\u06cc\u0645\u062a', nav_featured:'\u0646\u0645\u0627\u06cc\u0627\u06ba', nav_partners:'\u0634\u0631\u0627\u06a9\u062a \u062f\u0627\u0631', nav_contact:'\u0631\u0627\u0628\u0637\u06c1', nav_support:'\u0645\u062f\u062f', nav_start:'\u06a9\u0648\u0688\u0646\u06af \u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba',
+        hero_eyebrow:'\u06c1\u0645\u06cc\u0634\u06c1 \u0645\u0641\u062a\u060c \u06a9\u0648\u0626\u06cc \u0633\u0627\u0626\u0646 \u0627\u067e \u0646\u06c1\u06cc\u06ba \u2192', hero_title:'\u0622\u0646 \u0644\u0627\u0626\u0646 \u06a9\u0648\u0688 \u0627\u06cc\u0688\u06cc\u0679\u0631', hero_sub:'\u0641\u0648\u0631\u06cc \u06a9\u0648\u0688\u0646\u06af \u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba \u2014 \u06a9\u0648\u0626\u06cc \u0627\u0646\u0633\u0679\u0627\u0644\u06cc\u0634\u0646 \u0646\u06c1\u06cc\u06ba\u060c \u06a9\u0648\u0626\u06cc \u0633\u0627\u0626\u0646 \u0627\u067e \u0646\u06c1\u06cc\u06ba\u06d4', hero_action_label:'\u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba', hero_btn:'\u0686\u0644\u06cc\u06ba', hero_search_ph:'\u0632\u0628\u0627\u0646\u06cc\u06ba \u062a\u0644\u0627\u0634 \u06a9\u0631\u06cc\u06ba\u2026', hero_selected:'\u0645\u0646\u062a\u062e\u0628:', hero_folder_btn:'\u0627\u067e\u0646\u0627 \u067e\u06c1\u0644\u0627 \u0641\u0648\u0644\u0688\u0631 \u0628\u0646\u0627\u0626\u06cc\u06ba', hero_runs:'\u0686\u0644\u0627\u062a\u0627 \u06c1\u06d2\u00a0',
+        badge_free:'\u2713 \u06c1\u0645\u06cc\u0634\u06c1 \u0645\u0641\u062a', badge_noinstall:'\u26a1 \u0627\u0646\u0633\u0679\u0627\u0644\u06cc\u0634\u0646 \u0646\u06c1\u06cc\u06ba', badge_nosignup:'\u2726 \u0633\u0627\u0626\u0646 \u0627\u067e \u0646\u06c1\u06cc\u06ba', badge_opensource:'\u0627\u0648\u067e\u0646 \u0633\u0648\u0631\u0633', badge_viewsource:'\u0633\u0648\u0631\u0633 \u062f\u06cc\u06a9\u06be\u06cc\u06ba',
+        cta_title:'\u0635\u0631\u0641 \u06a9\u0648\u0688 \u0627\u06cc\u0688\u06cc\u0679\u0631 \u0646\u06c1\u06cc\u06ba', cta_sub:'\u0633\u0628 \u0633\u06d2 \u0644\u0686\u06cc\u0644\u06cc \u0688\u06cc\u0648\u06cc\u0644\u067e\u0645\u0646\u0679 \u067e\u0644\u06cc\u0679 \u0641\u0627\u0631\u0645 \u2014 \u0645\u0641\u062a\u060c \u06a9\u0648\u0626\u06cc \u0627\u0646\u0633\u0679\u0627\u0644\u06cc\u0634\u0646 \u0646\u06c1\u06cc\u06ba\u06d4', cta_btn:'\u06a9\u0648\u0688\u0646\u06af \u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba',
+        feat1_title:'\u0644\u0627\u0626\u06cc\u0648 \u067e\u0631\u06cc\u0648\u06cc\u0648', feat1_desc:'\u0679\u0627\u0626\u067e \u06a9\u0631\u062a\u06d2 \u0648\u0642\u062a HTML\u060c CSS \u0627\u0648\u0631 JavaScript \u06a9\u0648 \u0631\u06cc\u0644 \u0679\u0627\u0626\u0645 \u0645\u06cc\u06ba \u062f\u06cc\u06a9\u06be\u06cc\u06ba\u06d4', feat2_title:'\u06a9\u062b\u06cc\u0631 \u0644\u0633\u0627\u0646\u06cc \u062d\u0645\u0627\u06cc\u062a', feat2_desc:'HTML/CSS/JS\u060c SQL\u060c Python \u0627\u0648\u0631 Lua \u06a9\u0648 \u0686\u0644\u0627\u0626\u06cc\u06ba\u06d4', feat3_title:'\u0635\u0641\u0631 \u067e\u0631\u06cc\u0634\u0627\u0646\u06cc', feat3_desc:'\u06a9\u0648\u0626\u06cc \u0627\u0646\u0633\u0679\u0627\u0644\u06cc\u0634\u0646 \u0646\u06c1\u06cc\u06ba\u06d4 \u0628\u0631\u0627\u0624\u0632\u0631 \u06a9\u06be\u0648\u0644\u06cc\u06ba \u0627\u0648\u0631 \u0641\u0648\u0631\u06cc \u06a9\u0648\u0688\u0646\u06af \u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba\u06d4', feat4_title:'\u0645\u062d\u0641\u0648\u0638 \u0634\u06cc\u0626\u0631\u0646\u06af \u0644\u0646\u06a9\u0633', feat4_desc:'\u067e\u0627\u0633 \u0648\u0631\u0688 \u0633\u06d2 \u0645\u062d\u0641\u0648\u0638 \u0644\u0646\u06a9\u0633 \u06a9\u06d2 \u0633\u0627\u062a\u06be \u0627\u067e\u0646\u06d2 \u067e\u0631\u0648\u062c\u06cc\u06a9\u0679 \u0641\u0648\u0631\u06cc \u0634\u06cc\u0626\u0631 \u06a9\u0631\u06cc\u06ba\u06d4', feat5_title:'Monaco \u0627\u06cc\u0688\u06cc\u0679\u0631 \u0627\u0646\u062c\u0646', feat5_desc:'VS Code \u06a9\u06d2 \u0627\u0633\u06cc \u0627\u0646\u062c\u0646 \u0633\u06d2 \u0686\u0644\u062a\u0627 \u06c1\u06d2 \u2014 IntelliSense\u060c \u0645\u0644\u0679\u06cc \u06a9\u0631\u0633\u0631\u06d4', feat6_title:'\u06c1\u0631 \u062c\u06af\u06c1 \u06a9\u0627\u0645 \u06a9\u0631\u062a\u0627 \u06c1\u06d2', feat6_desc:'\u0645\u06a9\u0645\u0644 \u0637\u0648\u0631 \u067e\u0631 \u0622\u067e \u06a9\u06d2 \u0628\u0631\u0627\u0624\u0632\u0631 \u0645\u06cc\u06ba \u0686\u0644\u062a\u0627 \u06c1\u06d2\u06d4',
+        langs_title:'\u0632\u0628\u0627\u0646\u06cc\u06ba \u0627\u0648\u0631 \u067e\u0631\u06cc \u067e\u0631\u0648\u0633\u06cc\u0633\u0631', langs_sub:'13 \u0632\u0628\u0627\u0646\u0648\u06ba \u0645\u06cc\u06ba \u0628\u0631\u0627\u0624\u0632\u0631 \u0645\u06cc\u06ba \u06a9\u0648\u0688 \u0644\u06a9\u06be\u06cc\u06ba \u0627\u0648\u0631 \u0686\u0644\u0627\u0626\u06cc\u06ba\u06d4',
+        pricing_badge:'\u0633\u0627\u062f\u06c1 \u0642\u06cc\u0645\u062a', pricing_title:'\u0633\u0628 \u06a9\u0686\u06be <span class="hi">$0.</span><br>\u0645\u0641\u062a\u060c \u06c1\u0645\u06cc\u0634\u06c1 \u06a9\u06d2 \u0644\u06cc\u06d2\u06d4', pricing_sub:'\u06a9\u0648\u0626\u06cc \u067e\u0644\u0627\u0646 \u0646\u06c1\u06cc\u06ba\u06d4 \u06c1\u0631 \u062e\u0635\u0648\u0635\u06cc\u062a \u06c1\u0645\u06cc\u0634\u06c1 \u0633\u0628 \u06a9\u06d2 \u0644\u06cc\u06d2 \u0645\u0641\u062a\u06d4', pricing_plan:'\u0648\u0627\u062d\u062f \u067e\u0644\u0627\u0646', pricing_period:'\u06c1\u0645\u06cc\u0634\u06c1',
+        pf1:'Monaco / VS Code \u0627\u06cc\u0688\u06cc\u0679\u0631', pf2:'HTML\u060c CSS \u0627\u0648\u0631 JS \u2014 \u0644\u0627\u0626\u06cc\u0648 \u067e\u0631\u06cc\u0648\u06cc\u0648', pf3:'SQL\u060c Python \u0627\u0648\u0631 Lua \u2014 \u0631\u0646 \u0628\u0679\u0646', pf4:'13 \u067e\u0631\u06cc \u067e\u0631\u0648\u0633\u06cc\u0633\u0631', pf5:'\u0644\u0627\u0645\u062d\u062f\u0648\u062f \u067e\u0631\u0648\u062c\u06cc\u06a9\u0679', pf6:'\u0628\u06cc\u06a9 \u0627\u067e', pf7:'\u0645\u062d\u0641\u0648\u0638 \u0634\u06cc\u0626\u0631\u0646\u06af \u0644\u0646\u06a9\u0633', pf8:'\u06a9\u0648\u0626\u06cc \u0627\u06a9\u0627\u0624\u0646\u0679 \u0646\u06c1\u06cc\u06ba', pf9:'\u06a9\u0633\u06cc \u0628\u06be\u06cc \u0688\u0648\u0627\u0626\u0633 \u067e\u0631 \u06a9\u0627\u0645 \u06a9\u0631\u062a\u0627 \u06c1\u06d2',
+        pricing_cta:'\u0645\u0641\u062a \u0645\u06cc\u06ba \u06a9\u0648\u0688\u0646\u06af \u0634\u0631\u0648\u0639 \u06a9\u0631\u06cc\u06ba \u2190', pricing_note:'\u06a9\u0631\u06cc\u0688\u0679 \u06a9\u0627\u0631\u0688 \u0646\u06c1\u06cc\u06ba\u06d4 \u0633\u0627\u0626\u0646 \u0627\u067e \u0646\u06c1\u06cc\u06ba\u06d4 \u0628\u0633 \u06a9\u06be\u0648\u0644\u06cc\u06ba\u06d4',
+        pfs1:'\u06a9\u0648\u0626\u06cc \u0641\u0631\u06cc\u0645\u06cc\u0645 \u0686\u0627\u0644 \u0646\u06c1\u06cc\u06ba', pfs2:'\u06a9\u0648\u0626\u06cc \u0627\u062f\u0627\u06cc\u06af\u06cc \u0641\u06cc\u0686\u0631 \u0646\u06c1\u06cc\u06ba', pfs3:'\u06a9\u0628\u06be\u06cc \u06a9\u0631\u06cc\u0688\u0679 \u06a9\u0627\u0631\u0688 \u0646\u06c1\u06cc\u06ba', pfs4:'\u06c1\u0645\u06cc\u0634\u06c1 \u0645\u0641\u062a',
+        reviews_title:'\u0644\u0648\u06af \u06a9\u06cc\u0627 \u06a9\u06c1\u062a\u06d2 \u06c1\u06cc\u06ba', featured_eyebrow:'\u0627\u0639\u062a\u0631\u0627\u0641', featured_title:'\u0642\u0627\u0628\u0644 \u0628\u06be\u0631\u0648\u0633\u06c1 \u0627\u0648\u0631 \u0646\u0645\u0627\u06cc\u0627\u06ba', featured_sub:'Pterocos \u06a9\u0648 \u0633\u0631\u06a9\u0631\u062f\u06c1 \u0688\u0627\u0626\u0631\u06cc\u06a9\u0679\u0631\u06cc\u0632 \u0645\u06cc\u06ba \u0646\u0645\u0627\u06cc\u0627\u06ba \u06a9\u06cc\u0627 \u06af\u06cc\u0627 \u06c1\u06d2\u06d4',
+        discord_eyebrow:'\u06a9\u0645\u06cc\u0648\u0646\u0679\u06cc', discord_title:'Discord \u0634\u0631\u0627\u06a9\u062a \u062f\u0627\u0631', discord_sub:'\u06a9\u0645\u06cc\u0648\u0646\u0679\u06cc\u0632 \u062c\u0648 Pterocos \u06a9\u06d2 \u0633\u0627\u062a\u06be \u0634\u0631\u0627\u06a9\u062a \u06a9\u0631\u062a\u06cc \u06c1\u06cc\u06ba\u06d4',
+        dp_official_badge:'\u0633\u0631\u06a9\u0627\u0631\u06cc', dp_partner_badge:'\u0634\u0631\u06cc\u06a9', dp_official_desc:'\u0645\u0631\u06a9\u0632\u06cc Pterocose \u06a9\u0645\u06cc\u0648\u0646\u0679\u06cc \u2014 \u0645\u062f\u062f \u062d\u0627\u0635\u0644 \u06a9\u0631\u06cc\u06ba\u06d4', dp_ltc_desc:'\u0688\u06cc\u0648\u06cc\u0644\u067e\u0631\u0632 \u06a9\u06d2 \u0644\u06cc\u06d2 Discord \u06a9\u0645\u06cc\u0648\u0646\u0679\u06cc\u06d4', dp_coding_desc:'\u062a\u0645\u0627\u0645 \u0633\u0637\u062d\u0648\u06ba \u06a9\u06d2 \u06a9\u0648\u0688\u0631\u0632 \u06a9\u06d2 \u0644\u06cc\u06d2 \u0633\u0631\u0648\u0631\u06d4', join_server:'\u0633\u0631\u0648\u0631 \u0645\u06cc\u06ba \u0634\u0627\u0645\u0644 \u06c1\u0648\u06ba',
+        footer_quote:'Pterocos \u06a9\u06d2 \u0630\u0631\u06cc\u0639\u06d2 \u0628\u0631\u0627\u0624\u0632\u0631 \u0645\u06cc\u06ba \u06a9\u0648\u0688\u0646\u06af \u0645\u0627\u062d\u0648\u0644 \u062d\u0627\u0635\u0644 \u06a9\u0631\u0646\u06d2 \u06a9\u06cc \u0633\u0627\u062f\u06af\u06cc \u0646\u0627\u0642\u0627\u0628\u0644 \u06cc\u0642\u06cc\u0646 \u06c1\u06d2 \u2014', footer_quote_link:'\u062e\u0648\u062f \u0622\u0632\u0645\u0627\u0626\u06cc\u06ba', footer_copyright:'\u06a9\u0627\u067e\u06cc \u0631\u0627\u0626\u0679 \u00a9 2025\u20132026 Pterocos', footer_rights:'\u062c\u0645\u0644\u06c1 \u062d\u0642\u0648\u0642 \u0645\u062d\u0641\u0648\u0638 \u06c1\u06cc\u06ba', footer_tos:'\u0633\u0631\u0648\u0633 \u06a9\u06cc \u0634\u0631\u0627\u0626\u0637', footer_privacy:'\u0631\u0627\u0632\u062f\u0627\u0631\u06cc \u06a9\u06cc \u067e\u0627\u0644\u06cc\u0633\u06cc',
+        cookie_text:'Pterocos \u0627\u0633\u062a\u0639\u0645\u0627\u0644 \u06a9\u0631 \u06a9\u06d2\u060c \u0622\u067e \u06c1\u0645\u0627\u0631\u06d2 \u06a9\u0648\u06a9\u06cc\u0632 \u0633\u06d2 \u0627\u062a\u0641\u0627\u0642 \u06a9\u0631\u062a\u06d2 \u06c1\u06cc\u06ba\u06d4', cookie_learn:'\u0631\u0627\u0632\u062f\u0627\u0631\u06cc \u067e\u0627\u0644\u06cc\u0633\u06cc \u0645\u06cc\u06ba \u0645\u0632\u06cc\u062f \u062c\u0627\u0646\u06cc\u06ba\u06d4', cookie_privacy_btn:'\u0631\u0627\u0632\u062f\u0627\u0631\u06cc \u067e\u0627\u0644\u06cc\u0633\u06cc', cookie_accept:'\u0642\u0628\u0648\u0644 \u06a9\u0631\u06cc\u06ba',
+        contact_title:'\u0631\u0627\u0628\u0637\u06c1 \u06a9\u0631\u06cc\u06ba', contact_sub:'\u06a9\u0648\u0626\u06cc \u0633\u0648\u0627\u0644 \u06cc\u0627 \u062a\u062c\u0648\u06cc\u0632 \u06c1\u06d2\u061f \u0627\u06cc \u0645\u06cc\u0644 \u06cc\u0627 Discord\u06d4', contact_email_label:'\u0627\u06cc \u0645\u06cc\u0644 \u06a9\u0631\u06cc\u06ba', contact_discord_label:'Discord \u0645\u06cc\u06ba \u0634\u0627\u0645\u0644 \u06c1\u0648\u06ba',
+        picker_languages:'\u0632\u0628\u0627\u0646\u06cc\u06ba', picker_preprocessors:'\u067e\u0631\u06cc \u067e\u0631\u0648\u0633\u06cc\u0633\u0631', picker_no_results:'\u06a9\u0648\u0626\u06cc \u0646\u062a\u06cc\u062c\u06c1 \u0646\u06c1\u06cc\u06ba \u0645\u0644\u0627',
+      },
+      hi: {
+        nav_home:'\u0939\u094b\u092e', nav_features:'\u0935\u093f\u0936\u0947\u0937\u0924\u093e\u090f\u0902', nav_pricing:'\u092e\u0942\u0932\u094d\u092f', nav_featured:'\u092b\u093c\u0940\u091a\u0930\u094d\u0921', nav_partners:'\u092d\u093e\u0917\u0940\u0926\u093e\u0930', nav_contact:'\u0938\u0902\u092a\u0930\u094d\u0915', nav_support:'\u0938\u0939\u093e\u092f\u0924\u093e', nav_start:'\u0915\u094b\u0921\u093f\u0902\u0917 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902',
+        hero_eyebrow:'\u0939\u092e\u0947\u0936\u093e \u092e\u0941\u092b\u093c\u094d\u200d\u0924\u002c \u0915\u094b\u0908 \u0938\u093e\u0907\u0928\u0905\u092a \u0928\u0939\u0940\u0902 \u2192', hero_title:'\u0911\u0928\u0932\u093e\u0907\u0928 \u0915\u094b\u0921 \u090f\u0921\u093f\u091f\u0930', hero_sub:'\u0924\u0941\u0930\u0902\u0924 \u0915\u094b\u0921\u093f\u0902\u0917 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902 \u2014 \u0915\u094b\u0908 \u0907\u0902\u0938\u094d\u091f\u0949\u0932 \u0928\u0939\u0940\u0902\u002c \u0915\u094b\u0908 \u0938\u093e\u0907\u0928\u0905\u092a \u0928\u0939\u0940\u0902\u0964', hero_action_label:'\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902', hero_btn:'\u091a\u0932\u093f\u090f \u0936\u0941\u0930\u0942', hero_search_ph:'\u092d\u093e\u0937\u093e\u090f\u0902 \u0916\u094b\u091c\u0947\u0902\u2026', hero_selected:'\u091a\u0941\u0928\u093e \u0917\u092f\u093e:', hero_folder_btn:'\u0905\u092a\u0928\u093e \u092a\u0939\u0932\u093e \u092b\u093c\u094b\u0932\u094d\u0921\u0930 \u092c\u0928\u093e\u090f\u0902', hero_runs:'\u091a\u0932\u093e\u0924\u093e \u0939\u0948\u00a0',
+        badge_free:'\u2713 \u0939\u092e\u0947\u0936\u093e \u092e\u0941\u092b\u093c\u094d\u200d\u0924', badge_noinstall:'\u26a1 \u0907\u0902\u0938\u094d\u091f\u0949\u0932 \u0928\u0939\u0940\u0902', badge_nosignup:'\u2726 \u0938\u093e\u0907\u0928\u0905\u092a \u0928\u0939\u0940\u0902', badge_opensource:'\u0913\u092a\u0928 \u0938\u094b\u0930\u094d\u0938', badge_viewsource:'\u0938\u094b\u0930\u094d\u0938 \u0926\u0947\u0916\u0947\u0902',
+        cta_title:'\u0938\u093f\u0930\u094d\u092b\u093c \u0915\u094b\u0921 \u090f\u0921\u093f\u091f\u0930 \u0928\u0939\u0940\u0902', cta_sub:'\u0938\u092c\u0938\u0947 \u0932\u091a\u0940\u0932\u093e \u0914\u0930 \u0936\u0915\u094d\u0924\u093f\u0936\u093e\u0932\u0940 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930-\u0906\u0927\u093e\u0930\u093f\u0924 \u092a\u094d\u0932\u0947\u091f\u092b\u093c\u0949\u0930\u094d\u092e \u2014 \u092e\u0941\u092b\u093c\u094d\u200d\u0924\u0964', cta_btn:'\u0915\u094b\u0921\u093f\u0902\u0917 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902',
+        feat1_title:'\u0932\u093e\u0907\u0935 \u092a\u094d\u0930\u0940\u0935\u094d\u092f\u0942', feat1_desc:'\u0930\u0940\u092f\u0932-\u091f\u093e\u0907\u092e \u092e\u0947\u0902 HTML\u002c CSS \u0914\u0930 JS \u0926\u0947\u0916\u0947\u0902\u0964', feat2_title:'\u092c\u0939\u0941-\u092d\u093e\u0937\u093e \u0938\u092e\u0930\u094d\u0925\u0928', feat2_desc:'HTML/CSS/JS\u002c SQL\u002c Python \u0914\u0930 Lua \u0932\u093f\u0916\u0947\u0902 \u0914\u0930 \u091a\u0932\u093e\u090f\u0902\u0964', feat3_title:'\u0936\u0942\u0928\u094d\u092f \u091d\u0902\u091d\u091f', feat3_desc:'\u0915\u094b\u0908 \u0907\u0902\u0938\u094d\u091f\u0949\u0932 \u0928\u0939\u0940\u0902\u002c \u0938\u093e\u0907\u0928\u0905\u092a \u0928\u0939\u0940\u0902\u0964 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u0916\u094b\u0932\u0947\u0902 \u0914\u0930 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902\u0964', feat4_title:'\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0936\u0947\u092f\u0930 \u0932\u093f\u0902\u0915', feat4_desc:'\u092a\u093e\u0938\u0935\u0930\u094d\u0921-\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0932\u093f\u0902\u0915 \u0938\u0947 \u0905\u092a\u0928\u0947 \u092a\u094d\u0930\u094b\u091c\u0947\u0915\u094d\u091f \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902\u0964', feat5_title:'Monaco \u0907\u0902\u091c\u0928', feat5_desc:'VS Code \u0915\u0947 \u0938\u092e\u093e\u0928 \u0907\u0902\u091c\u0928 \u2014 IntelliSense\u002c \u092e\u0932\u094d\u091f\u0940-\u0915\u0930\u094d\u0938\u0930 \u090f\u0921\u093f\u091f\u093f\u0902\u0917\u0964', feat6_title:'\u0939\u0930 \u091c\u0917\u0939 \u0915\u093e\u092e \u0915\u0930\u0924\u093e \u0939\u0948', feat6_desc:'\u092a\u0942\u0930\u0940 \u0924\u0930\u0939 \u0906\u092a\u0915\u0947 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u092e\u0947\u0902 \u091a\u0932\u0924\u093e \u0939\u0948\u0964',
+        langs_title:'\u092d\u093e\u0937\u093e\u090f\u0902 \u0914\u0930 \u092a\u094d\u0930\u0940\u092a\u094d\u0930\u094b\u0938\u0947\u0938\u0930', langs_sub:'13 \u092d\u093e\u0937\u093e\u0913\u0902 \u092e\u0947\u0902 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u092e\u0947\u0902 \u0915\u094b\u0921 \u091a\u0932\u093e\u090f\u0902\u0964',
+        pricing_badge:'\u0938\u0930\u0932 \u092e\u0942\u0932\u094d\u092f', pricing_title:'\u0938\u092c \u0915\u0941\u091b <span class="hi">$0.</span><br>\u092e\u0941\u092b\u093c\u094d\u200d\u0924\u002c \u0939\u092e\u0947\u0936\u093e\u0964', pricing_sub:'\u0915\u094b\u0908 \u092a\u094d\u0932\u093e\u0928 \u0928\u0939\u0940\u0902\u0964 \u0915\u094b\u0908 \u091b\u093f\u092a\u0940 \u092b\u093c\u0940\u0938 \u0928\u0939\u0940\u0902\u0964 \u0939\u0930 \u0938\u0941\u0935\u093f\u0927\u093e \u0939\u092e\u0947\u0936\u093e \u092e\u0941\u092b\u093c\u094d\u200d\u0924\u0964', pricing_plan:'\u090f\u0915\u092e\u093e\u0924\u094d\u0930 \u092a\u094d\u0932\u093e\u0928', pricing_period:'\u0939\u092e\u0947\u0936\u093e',
+        pf1:'Monaco / VS Code \u0907\u0902\u091c\u0928', pf2:'HTML\u002c CSS \u0914\u0930 JS \u2014 \u0932\u093e\u0907\u0935 \u092a\u094d\u0930\u0940\u0935\u094d\u092f\u0942', pf3:'SQL\u002c Python \u0914\u0930 Lua \u2014 \u0930\u0928 \u092c\u091f\u0928', pf4:'13 \u092a\u094d\u0930\u0940\u092a\u094d\u0930\u094b\u0938\u0947\u0938\u0930', pf5:'\u0905\u0938\u0940\u092e\u093f\u0924 \u092a\u094d\u0930\u094b\u091c\u0947\u0915\u094d\u091f', pf6:'\u092c\u0948\u0915\u0905\u092a', pf7:'\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0936\u0947\u092f\u0930 \u0932\u093f\u0902\u0915', pf8:'\u0915\u094b\u0908 \u0916\u093e\u0924\u093e \u0928\u0939\u0940\u0902', pf9:'\u0915\u093f\u0938\u0940 \u092d\u0940 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930',
+        pricing_cta:'\u092e\u0941\u092b\u093c\u094d\u200d\u0924 \u092e\u0947\u0902 \u0915\u094b\u0921\u093f\u0902\u0917 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902 \u2192', pricing_note:'\u0915\u094b\u0908 \u0915\u094d\u0930\u0947\u0921\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0928\u0939\u0940\u0902\u0964 \u0915\u094b\u0908 \u0938\u093e\u0907\u0928-\u0905\u092a \u0928\u0939\u0940\u0902\u0964',
+        pfs1:'\u0915\u094b\u0908 \u092b\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u091a\u093e\u0932 \u0928\u0939\u0940\u0902', pfs2:'\u0915\u094b\u0908 \u092a\u0947\u0921 \u092b\u093c\u0940\u091a\u0930 \u0928\u0939\u0940\u0902', pfs3:'\u0915\u092d\u0940 \u0915\u094d\u0930\u0947\u0921\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0928\u0939\u0940\u0902', pfs4:'\u0939\u092e\u0947\u0936\u093e \u092e\u0941\u092b\u093c\u094d\u200d\u0924',
+        reviews_title:'\u0932\u094b\u0917 \u0915\u094d\u092f\u093e \u0915\u0939 \u0930\u0939\u0947 \u0939\u0948\u0902', featured_eyebrow:'\u092e\u093e\u0928\u094d\u092f\u0924\u093e', featured_title:'\u0935\u093f\u0936\u094d\u0935\u0938\u0928\u0940\u092f \u0914\u0930 \u092e\u093e\u0928\u094d\u092f', featured_sub:'Pterocos \u0915\u094b \u092a\u094d\u0930\u092e\u0941\u0916 \u0921\u0947\u0935\u0932\u092a\u0930 \u0921\u093e\u092f\u0930\u0947\u0915\u094d\u091f\u0930\u0940 \u092e\u0947\u0902 \u092e\u093e\u0928\u094d\u092f\u0924\u093e \u092e\u093f\u0932\u0940 \u0939\u0948\u0964',
+        discord_eyebrow:'\u0938\u092e\u0941\u0926\u093e\u092f', discord_title:'Discord \u092d\u093e\u0917\u0940\u0926\u093e\u0930', discord_sub:'Pterocos \u0915\u0947 \u0938\u093e\u0925 \u092d\u093e\u0917\u0940\u0926\u093e\u0930\u0940 \u0915\u0930\u0928\u0947 \u0935\u093e\u0932\u0947 \u0938\u092e\u0941\u0926\u093e\u092f\u0964',
+        dp_official_badge:'\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915', dp_partner_badge:'\u092d\u093e\u0917\u0940\u0926\u093e\u0930', dp_official_desc:'\u092e\u0941\u0916\u094d\u092f Pterocose \u0938\u092e\u0941\u0926\u093e\u092f \u2014 \u0938\u0939\u093e\u092f\u0924\u093e \u092a\u093e\u090f\u0902 \u0914\u0930 \u0921\u0947\u0935\u0932\u092a\u0930\u094d\u0938 \u0938\u0947 \u091c\u0941\u0921\u093c\u0947\u0902\u0964', dp_ltc_desc:'\u0921\u0947\u0935\u0932\u092a\u0930\u094d\u0938 \u0915\u0947 \u0932\u093f\u090f Discord \u0938\u092e\u0941\u0926\u093e\u092f\u0964', dp_coding_desc:'\u0938\u092d\u0940 \u0938\u094d\u0924\u0930\u094b\u0902 \u0915\u0947 \u0915\u094b\u0921\u0930\u094d\u0938 \u0915\u0947 \u0932\u093f\u090f \u0938\u0930\u094d\u0935\u0930\u0964', join_server:'\u0938\u0930\u094d\u0935\u0930 \u091c\u094b\u0907\u0928 \u0915\u0930\u0947\u0902',
+        footer_quote:'\u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u092e\u0947\u0902 \u092a\u0942\u0930\u094d\u0923 \u0915\u094b\u0921\u093f\u0902\u0917 \u0935\u093e\u0924\u093e\u0935\u0930\u0923 \u092a\u093e\u0928\u0947 \u0915\u0940 \u0938\u0930\u0932\u0924\u093e \u0905\u0935\u093f\u0936\u094d\u0935\u0938\u0928\u0940\u092f \u0939\u0948 \u2014', footer_quote_link:'\u0938\u094d\u0935\u092f\u0902 \u0906\u091c\u093c\u092e\u093e\u090f\u0902', footer_copyright:'\u0915\u0949\u092a\u0940\u0930\u093e\u0907\u091f \u00a9 2025\u20132026 Pterocos', footer_rights:'\u0938\u0930\u094d\u0935\u093e\u0927\u093f\u0915\u093e\u0930 \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924', footer_tos:'\u0938\u0947\u0935\u093e \u0915\u0940 \u0936\u0930\u094d\u0924\u0947\u0902', footer_privacy:'\u0917\u094b\u092a\u0928\u0940\u092f\u0924\u093e \u0928\u0940\u0924\u093f',
+        cookie_text:'Pterocos \u0915\u093e \u0909\u092a\u092f\u094b\u0917 \u0915\u0930\u0915\u0947\u002c \u0906\u092a \u0915\u0941\u0915\u0940\u091c\u093c \u0915\u0947 \u0909\u092a\u092f\u094b\u0917 \u0915\u094b \u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902\u0964', cookie_learn:'\u0917\u094b\u092a\u0928\u0940\u092f\u0924\u093e \u0928\u0940\u0924\u093f \u092e\u0947\u0902 \u091c\u093e\u0928\u0947\u0902\u0964', cookie_privacy_btn:'\u0917\u094b\u092a\u0928\u0940\u092f\u0924\u093e \u0928\u0940\u0924\u093f', cookie_accept:'\u0938\u094d\u0935\u0940\u0915\u093e\u0930 \u0915\u0930\u0947\u0902',
+        contact_title:'\u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902', contact_sub:'\u0915\u094b\u0908 \u0938\u0935\u093e\u0932 \u0939\u0948? \u0908\u092e\u0947\u0932 \u0938\u0947 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902\u0964', contact_email_label:'\u0908\u092e\u0947\u0932 \u0915\u0930\u0947\u0902', contact_discord_label:'Discord \u092e\u0947\u0902 \u0936\u093e\u092e\u093f\u0932 \u0939\u094b\u0902',
+        picker_languages:'\u092d\u093e\u0937\u093e\u090f\u0902', picker_preprocessors:'\u092a\u094d\u0930\u0940\u092a\u094d\u0930\u094b\u0938\u0947\u0938\u0930', picker_no_results:'\u0915\u094b\u0908 \u092a\u0930\u093f\u0923\u093e\u092e \u0928\u0939\u0940\u0902',
+      },
+      es: {
+        nav_home:'Inicio', nav_features:'Caracter\u00edsticas', nav_pricing:'Precios', nav_featured:'Destacado en', nav_partners:'Socios', nav_contact:'Contacto', nav_support:'Soporte', nav_start:'Empezar a Codificar',
+        hero_eyebrow:'Gratis para siempre, sin registro \u2192', hero_title:'Editor de C\u00f3digo Online', hero_sub:'Empieza a codificar al instante \u2014 sin instalaci\u00f3n, sin registro. Solo usa Pterocos y construye.', hero_action_label:'Comenzar', hero_btn:'Vamos', hero_search_ph:'Buscar lenguajes y preprocesadores\u2026', hero_selected:'Seleccionado:', hero_folder_btn:'Crea tu primera carpeta', hero_runs:'Ejecuta\u00a0',
+        badge_free:'\u2713 Gratis para siempre', badge_noinstall:'\u26a1 Sin instalaci\u00f3n', badge_nosignup:'\u2726 Sin registro', badge_opensource:'C\u00f3digo abierto', badge_viewsource:'Ver c\u00f3digo',
+        cta_title:'M\u00e1s que un editor de c\u00f3digo', cta_sub:'La plataforma m\u00e1s flexible y poderosa \u2014 gratuita, sin instalaci\u00f3n.', cta_btn:'Empezar a Codificar',
+        feat1_title:'Vista previa en vivo', feat1_desc:'Ve tu HTML, CSS y JavaScript en tiempo real. Sin recarga, sin retrasos.', feat2_title:'Soporte multilenguaje', feat2_desc:'Escribe y ejecuta HTML/CSS/JS, SQL, Python y Lua.', feat3_title:'Cero fricci\u00f3n', feat3_desc:'Sin instalaci\u00f3n, sin registro. Abre tu navegador y empieza.', feat4_title:'Compartir seguro', feat4_desc:'Comparte proyectos con enlaces protegidos por contrase\u00f1a.', feat5_title:'Motor Monaco', feat5_desc:'El mismo motor que VS Code \u2014 IntelliSense, edici\u00f3n multicursor.', feat6_title:'Funciona en todas partes', feat6_desc:'Completamente en tu navegador \u2014 sin servidor.',
+        langs_title:'Lenguajes y Preprocesadores', langs_sub:'Escribe y ejecuta c\u00f3digo en 13 lenguajes, con soporte completo de preprocesadores.',
+        pricing_badge:'Precios simples', pricing_title:'Todo a <span class="hi">$0.</span><br>Gratis, para siempre.', pricing_sub:'Sin planes. Sin tarifas ocultas. Sin tarjeta de cr\u00e9dito. Todo gratis, siempre.', pricing_plan:'El \u00fanico plan', pricing_period:'para siempre',
+        pf1:'Motor Monaco / VS Code', pf2:'HTML, CSS y JS \u2014 vista previa instant\u00e1nea', pf3:'SQL, Python y Lua \u2014 bot\u00f3n de ejecuci\u00f3n', pf4:'13 preprocesadores', pf5:'Proyectos ilimitados', pf6:'Copia de seguridad', pf7:'Compartir con enlaces protegidos', pf8:'Sin cuenta requerida', pf9:'Cualquier dispositivo y navegador',
+        pricing_cta:'Empezar Gratis \u2192', pricing_note:'Sin tarjeta de cr\u00e9dito. Sin registro.',
+        pfs1:'Sin enga\u00f1o freemium', pfs2:'Sin funciones de pago', pfs3:'Sin tarjeta nunca', pfs4:'Gratis para siempre',
+        reviews_title:'Lo que dice la gente', featured_eyebrow:'Reconocimiento', featured_title:'De confianza y Destacado en', featured_sub:'Pterocos ha sido destacado en directorios de desarrolladores y plataformas de startups.',
+        discord_eyebrow:'Comunidad', discord_title:'Socios de Discord', discord_sub:'Comunidades que se asocian con Pterocos \u2014 compartiendo recursos y soporte.',
+        dp_official_badge:'Oficial', dp_partner_badge:'Socio', dp_official_desc:'La comunidad principal \u2014 obt\u00e9n soporte y conecta con desarrolladores de todo el mundo.', dp_ltc_desc:'Una vibrante comunidad Discord para desarrolladores y aprendices.', dp_coding_desc:'Un servidor acogedor para programadores de todos los niveles.', join_server:'Unirse al servidor',
+        footer_quote:'La simplicidad de obtener un entorno de c\u00f3digo completo en el navegador es incre\u00edble. Pterocos hace f\u00e1cil prototipar y compartir ideas \u2014', footer_quote_link:'pru\u00e9balo t\u00fa mismo', footer_copyright:'Copyright \u00a9 2025\u20132026 Pterocos', footer_rights:'Todos los derechos reservados', footer_tos:'T\u00e9rminos de Servicio', footer_privacy:'Pol\u00edtica de Privacidad',
+        cookie_text:'Al usar Pterocos, aceptas nuestro uso de cookies y servicios de terceros.', cookie_learn:'M\u00e1s informaci\u00f3n en nuestra Pol\u00edtica de privacidad.', cookie_privacy_btn:'Pol\u00edtica de Privacidad', cookie_accept:'Aceptar y Continuar',
+        contact_title:'Cont\u00e1ctanos', contact_sub:'\u00bfTienes una pregunta? Cont\u00e1ctanos por correo o \u00fanete a Discord.', contact_email_label:'Env\u00edanos un correo', contact_discord_label:'Unirse a Discord',
+        picker_languages:'Lenguajes', picker_preprocessors:'Preprocesadores', picker_no_results:'No se encontraron resultados',
+      },
+      fr: {
+        nav_home:'Accueil', nav_features:'Fonctionnalit\u00e9s', nav_pricing:'Tarifs', nav_featured:'R\u00e9f\u00e9renc\u00e9 sur', nav_partners:'Partenaires', nav_contact:'Contact', nav_support:'Assistance', nav_start:'Commencer \u00e0 Coder',
+        hero_eyebrow:'Gratuit pour toujours, sans inscription \u2192', hero_title:'\u00c9diteur de Code en Ligne', hero_sub:'Commencez \u00e0 coder instantan\u00e9ment \u2014 aucune installation, aucune inscription.', hero_action_label:'D\u00e9marrer', hero_btn:'Allons-y', hero_search_ph:'Rechercher des langages\u2026', hero_selected:'S\u00e9lectionn\u00e9\u00a0:', hero_folder_btn:'Cr\u00e9ons votre premier dossier', hero_runs:'Ex\u00e9cute\u00a0',
+        badge_free:'\u2713 Gratuit pour toujours', badge_noinstall:'\u26a1 Sans installation', badge_nosignup:'\u2726 Sans inscription', badge_opensource:'Open Source', badge_viewsource:'Voir le code',
+        cta_title:"Plus qu'\u00e9diteur de code", cta_sub:'La plateforme la plus flexible et puissante \u2014 gratuite, sans installation.', cta_btn:'Commencer \u00e0 Coder',
+        feat1_title:'Aper\u00e7u en direct', feat1_desc:'Voyez votre HTML, CSS et JavaScript en temps r\u00e9el. Sans rechargement.', feat2_title:'Support multi-langages', feat2_desc:'\u00c9crivez et ex\u00e9cutez HTML/CSS/JS, SQL, Python et Lua.', feat3_title:'Z\u00e9ro friction', feat3_desc:'Aucune installation, aucune inscription. Ouvrez et codez.', feat4_title:'Partage s\u00e9curis\u00e9', feat4_desc:'Partagez vos projets avec des liens prot\u00e9g\u00e9s.', feat5_title:'Moteur Monaco', feat5_desc:'Le m\u00eame moteur que VS Code \u2014 IntelliSense, multi-curseur.', feat6_title:'Fonctionne partout', feat6_desc:'Enti\u00e8rement dans votre navigateur \u2014 aucun serveur.',
+        langs_title:'Langages et Pr\u00e9processeurs', langs_sub:'\u00c9crivez du code dans 13 langages avec support complet des pr\u00e9processeurs.',
+        pricing_badge:'Tarification simple', pricing_title:'Tout \u00e0 <span class="hi">$0.</span><br>Gratuit, pour toujours.', pricing_sub:'Aucun plan. Aucun frais cach\u00e9. Tout gratuit, toujours.', pricing_plan:'Le seul plan', pricing_period:'pour toujours',
+        pf1:'Moteur Monaco / VS Code', pf2:'HTML, CSS et JS \u2014 aper\u00e7u instantan\u00e9', pf3:"SQL, Python et Lua \u2014 bouton d'ex\u00e9cution", pf4:'13 pr\u00e9processeurs', pf5:'Projets illimit\u00e9s', pf6:'Sauvegarde', pf7:'Liens prot\u00e9g\u00e9s', pf8:'Aucun compte requis', pf9:'Tout appareil, tout navigateur',
+        pricing_cta:'Commencer Gratuitement \u2192', pricing_note:'Aucune carte bancaire. Aucune inscription.',
+        pfs1:'Aucun app\u00e2t freemium', pfs2:'Aucune fonctionnalit\u00e9 payante', pfs3:'Jamais de carte bancaire', pfs4:'Gratuit pour toujours',
+        reviews_title:'Ce que disent les gens', featured_eyebrow:'Reconnaissance', featured_title:'De confiance et R\u00e9f\u00e9renc\u00e9 sur', featured_sub:'Pterocos a \u00e9t\u00e9 pr\u00e9sent\u00e9 dans les principaux r\u00e9pertoires de d\u00e9veloppeurs.',
+        discord_eyebrow:'Communaut\u00e9', discord_title:'Partenaires Discord', discord_sub:"Des communaut\u00e9s qui s'associent avec Pterocos \u2014 partageant ressources et support.",
+        dp_official_badge:'Officiel', dp_partner_badge:'Partenaire', dp_official_desc:"La communaut\u00e9 principale \u2014 obtenez du support et connectez-vous avec des d\u00e9veloppeurs.", dp_ltc_desc:"Une communaut\u00e9 Discord florissante pour les d\u00e9veloppeurs.", dp_coding_desc:"Un serveur accueillant pour les codeurs de tous niveaux.", join_server:'Rejoindre le serveur',
+        footer_quote:"La simplicit\u00e9 d'obtenir un environnement de code complet dans le navigateur est incroyable. Pterocos rend facile de prototyper et partager des id\u00e9es \u2014", footer_quote_link:'essayez-le vous-m\u00eame', footer_copyright:'Copyright \u00a9 2025\u20132026 Pterocos', footer_rights:'Tous droits r\u00e9serv\u00e9s', footer_tos:"Conditions d'utilisation", footer_privacy:'Politique de confidentialit\u00e9',
+        cookie_text:"En utilisant Pterocos, vous acceptez notre utilisation de cookies et services tiers.", cookie_learn:'En savoir plus dans notre Politique de confidentialit\u00e9.', cookie_privacy_btn:'Politique de confidentialit\u00e9', cookie_accept:'Accepter et Continuer',
+        contact_title:'Nous contacter', contact_sub:"Vous avez une question\u00a0? Contactez-nous par e-mail ou rejoignez Discord.", contact_email_label:'Envoyez-nous un e-mail', contact_discord_label:'Rejoindre Discord',
+        picker_languages:'Langages', picker_preprocessors:'Pr\u00e9processeurs', picker_no_results:'Aucun r\u00e9sultat trouv\u00e9',
+      },
+    };
+
+    const RTL_LANGS = new Set(['ar','ur']);
+    let currentUILang = 'en';
+    try { currentUILang = localStorage.getItem('pterocos_ui_lang') || 'en'; } catch(e) {}
+    if (!I18N[currentUILang]) currentUILang = 'en';
+
+    function applyLang(code) {
+      const t = I18N[code] || I18N.en;
+      currentUILang = code;
+      try { localStorage.setItem('pterocos_ui_lang', code); } catch(e) {}
+      document.documentElement.lang = code;
+      document.documentElement.dir = RTL_LANGS.has(code) ? 'rtl' : 'ltr';
+      document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) el.textContent = t[key];
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-html');
+        if (t[key] !== undefined) el.innerHTML = t[key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-placeholder');
+        if (t[key] !== undefined) el.placeholder = t[key];
+      });
+      document.querySelectorAll('.ui-lang-option').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-lang') === code);
+      });
+      var labels = {en:'EN',ar:'\u0639\u0631',ur:'\u0627\u0631\u062f',hi:'\u0939\u093f',es:'ES',fr:'FR'};
+      var labelEl = document.getElementById('uiLangLabel');
+      if (labelEl) labelEl.textContent = labels[code] || code.toUpperCase();
+    }
+
+    var uiLangOpen = false;
+    function toggleUILang(e) {
+      e.stopPropagation();
+      uiLangOpen = !uiLangOpen;
+      var dd = document.getElementById('uiLangDropdown');
+      var ch = document.getElementById('uiLangChevron');
+      if (dd) dd.classList.toggle('open', uiLangOpen);
+      if (ch) ch.style.transform = uiLangOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+    function setUILang(code) {
+      applyLang(code);
+      uiLangOpen = false;
+      var dd = document.getElementById('uiLangDropdown');
+      var ch = document.getElementById('uiLangChevron');
+      if (dd) dd.classList.remove('open');
+      if (ch) ch.style.transform = 'rotate(0deg)';
+    }
+    document.addEventListener('click', function(e) {
+      var wrap = document.getElementById('uiLangWrap');
+      if (wrap && !wrap.contains(e.target) && uiLangOpen) {
+        uiLangOpen = false;
+        var dd = document.getElementById('uiLangDropdown');
+        var ch = document.getElementById('uiLangChevron');
+        if (dd) dd.classList.remove('open');
+        if (ch) ch.style.transform = 'rotate(0deg)';
+      }
+    });
+
+    // Apply saved language on load
+    applyLang(currentUILang);
+
+    /* ── THEME TOGGLE ── */
+    (function() {
+      var saved = 'dark';
+      try { saved = localStorage.getItem('pterocos_theme') || 'dark'; } catch(e) {}
+      if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+    function toggleTheme() {
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      var next = isLight ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('pterocos_theme', next); } catch(e) {}
+    }
+
+    /* ── GITHUB STAR COUNT ── */
+    (function() {
+      fetch('https://api.github.com/repos/aminkheddache-dotcom/Pterocos')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data) return;
+          var n = data.stargazers_count;
+          var label = n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
+          var el = document.getElementById('navStarCount');
+          if (el) el.textContent = label;
+        })
+        .catch(function() {});
+    })();
+
+    /* ── COOKIE BANNER ── */
+    (function() {
+      try {
+        if (localStorage.getItem('pterocos_cookies_accepted') === '1') {
+          document.getElementById('cookieBanner').classList.add('hidden');
+        }
+      } catch(e) {}
+    })();
+    function acceptCookies() {
+      try { localStorage.setItem('pterocos_cookies_accepted', '1'); } catch(e) {}
+      document.getElementById('cookieBanner').classList.add('hidden');
+    }
+
+    function openContactPopup() {
+      document.getElementById('contactOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeContactPopup() {
+      document.getElementById('contactOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function openLegal(type) {
+      const id = type === 'tos' ? 'tosOverlay' : 'privacyOverlay';
+      document.getElementById(id).classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLegal(type) {
+      const id = type === 'tos' ? 'tosOverlay' : 'privacyOverlay';
+      document.getElementById(id).classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeContactPopup();
+        closeLegal('tos');
+        closeLegal('privacy');
+      }
+    });
+
+    /* ── LANG PICKER ── */
+    const LANGS = [
+      { name: 'HTML',             type: 'Language',     tag: 'Markup' },
+      { name: 'CSS',              type: 'Language',     tag: 'Styling' },
+      { name: 'JavaScript',       type: 'Language',     tag: 'Scripting' },
+      { name: 'Python',           type: 'Language',     tag: 'General Purpose' },
+      { name: 'DuckDB',           type: 'Language',     tag: 'SQL Analytics' },
+      { name: 'SQLite',           type: 'Language',     tag: 'SQL Database' },
+      { name: 'Lua',              type: 'Language',     tag: 'Scripting' },
+      { name: 'C# (.NET)',        type: 'Language',     tag: 'General Purpose' },
+      { name: 'Ruby',             type: 'Language',     tag: 'General Purpose' },
+      { name: 'PHP',              type: 'Language',     tag: 'Scripting' },
+      { name: 'Rust',             type: 'Language',     tag: 'Systems' },
+      { name: 'Java',             type: 'Language',     tag: 'General Purpose' },
+      { name: 'Kotlin',           type: 'Language',     tag: 'General Purpose' },
+      { name: 'JSON',             type: 'Language',     tag: 'Data Format' },
+      { name: 'Minecraft Skript', type: 'Language',     tag: 'Plugin Scripting' },
+      { name: 'Pug',              type: 'Preprocessor', tag: 'HTML' },
+      { name: 'Markdown',         type: 'Preprocessor', tag: 'HTML' },
+      { name: 'SCSS',             type: 'Preprocessor', tag: 'CSS' },
+      { name: 'Sass',             type: 'Preprocessor', tag: 'CSS' },
+      { name: 'Less',             type: 'Preprocessor', tag: 'CSS' },
+      { name: 'TypeScript',       type: 'Preprocessor', tag: 'JavaScript' },
+      { name: 'JSX (React)',      type: 'Preprocessor', tag: 'JavaScript' },
+      { name: 'CoffeeScript',     type: 'Preprocessor', tag: 'JavaScript' },
+      { name: 'Babel',            type: 'Preprocessor', tag: 'JavaScript' },
+      { name: 'LiveScript',       type: 'Preprocessor', tag: 'JavaScript' },
+    ];
+
+    const LANG_ICONS = {
+      'HTML': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#e44d26"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#f16529"/><path d="M9.4 10.6h6.6v3.2H12.9l.2 2.6h6.5l-.7 7.4-3.4 1V21.7l-3.1-.8-.2-2.5H9.1l.3 5.1L16 25.4V22l-3.2-.9-.2-2.4H16v-3.1h-6.8z" fill="#ebebeb"/><path d="M16 10.6h3.3l-.2 2.6H16v3.1h3.1l-.3 3.6L16 20.8V25.4l6.7-1.9.8-9.7.1-3.2H16z" fill="#fff"/></svg>',
+      'CSS': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#1572b6"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#33a9dc"/><path d="M9.5 10.6h6.5v3.2h-3.3l.2 1.6h3.1v3.1h-2.8l.2 2.6 2.6.7v3.4l-6.2-1.7z" fill="#ebebeb"/><path d="M22.5 10.6H16v3.2h6.2l-.2 1.6H16v3.1h5.7l-.6 5.3-5.1 1.4v3.4l6.2-1.7z" fill="#fff"/></svg>',
+      'JavaScript': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="3" fill="#f7df1e"/><path d="M10.6 25.3c.6 1 1.5 1.7 3 1.7 1.6 0 2.6-.8 2.6-2.3V17h-2.4v7.6c0 .6-.2.9-.7.9-.5 0-.8-.3-1.1-.8zm7.7-.4c.7 1.2 1.9 2.1 3.8 2.1 2 0 3.4-1.1 3.4-2.8 0-1.6-1-2.4-2.7-3.1l-.6-.2c-.9-.4-1.2-.6-1.2-1.2 0-.5.4-.9 1-.9.6 0 1 .3 1.4.9l1.6-1c-.7-1.2-1.7-1.7-3-1.7-1.9 0-3.1 1.2-3.1 2.8 0 1.5 1 2.4 2.6 3l.6.3c.9.4 1.3.7 1.3 1.3 0 .6-.5 1-1.3 1-.9 0-1.5-.5-1.9-1.2z"/></svg>',
+      'Python': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pyb-dd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#387EB8"/><stop offset="100%" stop-color="#366994"/></linearGradient><linearGradient id="pyy-dd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFE052"/><stop offset="100%" stop-color="#FFC331"/></linearGradient></defs><path d="M15.9 3C11 3 11.3 5.1 11.3 5.1V7.2h4.7v.6H8.6S5 7.4 5 12.4c0 5 2.8 4.8 2.8 4.8H9.6v-2.3s-.1-2.8 2.7-2.8h4.7s2.6.1 2.6-2.5V5.7S20.1 3 15.9 3zM13.3 5.1c.5 0 .9.4.9.9s-.4.9-.9.9-.9-.4-.9-.9.4-.9.9-.9z" fill="url(#pyb-dd)"/><path d="M16.1 29c4.9 0 4.6-2.1 4.6-2.1v-2.1h-4.7v-.6h7.4s3.6.4 3.6-4.6c0-5-2.8-4.8-2.8-4.8H22.4v2.3s.1 2.8-2.7 2.8h-4.7s-2.6-.1-2.6 2.5v4.2s-.4 2.4 3.7 2.4zm2.6-2.1c-.5 0-.9-.4-.9-.9s.4-.9.9-.9.9.4.9.9-.4.9-.9.9z" fill="url(#pyy-dd)"/></svg>',
+      'DuckDB': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="8" rx="11" ry="4" fill="#f4a12a"/><path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#e8920a"/><path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#d47f00"/></svg>',
+      'SQLite': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="8" rx="11" ry="4" fill="#4a90d9"/><path d="M5 8v6c0 2.2 4.9 4 11 4s11-1.8 11-4V8c0 2.2-4.9 4-11 4S5 10.2 5 8z" fill="#357abd"/><path d="M5 14v6c0 2.2 4.9 4 11 4s11-1.8 11-4v-6c0 2.2-4.9 4-11 4S5 16.2 5 14z" fill="#2a6099"/></svg>',
+      'Lua': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="#000080"/><circle cx="21" cy="11" r="4" fill="#fff"/><circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16" cy="16" r="4" fill="#fff"/></svg>',
+      'C# (.NET)': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16 2L4 8.7v14.6L16 30l12-6.7V8.7z" fill="#9b4f96"/><path d="M16 7a9 9 0 0 0-9 9 9 9 0 0 0 9 9 9 9 0 0 0 5.7-2l-2.5-2.5A5.5 5.5 0 0 1 16 22a5.5 5.5 0 0 1-5.5-5.5A5.5 5.5 0 0 1 16 11a5.5 5.5 0 0 1 3.2 1l2.5-2.5A9 9 0 0 0 16 7z" fill="#fff"/></svg>',
+      'Ruby': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><polygon points="20,4 28,12 16,28 4,28 4,16" fill="#cc342d"/><polygon points="20,4 28,12 24,4" fill="#a31f1f"/><polygon points="4,28 4,16 10,22" fill="#e06b65"/><polygon points="16,28 10,22 20,18 28,12" fill="#a31f1f"/><polygon points="10,22 4,16 10,10 20,4 20,18" fill="#cc342d"/><polygon points="10,22 20,18 16,28" fill="#e8a09d"/></svg>',
+      'PHP': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="16" rx="15" ry="9" fill="#8892bf"/><text x="16" y="20.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="Arial,sans-serif" fill="#fff" letter-spacing="0.5">PHP</text></svg>',
+      'Rust': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="13" fill="none" stroke="#ce422b" stroke-width="2.5"/><circle cx="16" cy="16" r="5" fill="#ce422b"/><rect x="14.5" y="3" width="3" height="4" rx="1" fill="#ce422b"/><rect x="14.5" y="25" width="3" height="4" rx="1" fill="#ce422b"/><rect x="3" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/><rect x="25" y="14.5" width="4" height="3" rx="1" fill="#ce422b"/></svg>',
+      'Java': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M12.3 21.5s-1.1.6.8.8c2.2.3 3.4.2 5.8-.2 0 0 .6.4 1.5.8-5.5 2.3-12.4-.1-8.1-1.4z" fill="#e76f00"/><path d="M11.6 18.7s-1.2.9.6 1.1c2.4.3 4.2.3 7.4-.4 0 0 .4.4 1.1.7-6.5 1.9-13.8.2-9.1-1.4z" fill="#e76f00"/><path d="M16.8 13.2c1.3 1.5-.4 2.9-.4 2.9s3.3-1.7 1.8-3.8c-1.4-2-2.5-3 3.4-6.4 0 0-9.2 2.3-4.8 7.3z" fill="#e76f00"/><path d="M22.8 23.3s.8.7-.9 1.2c-3.3 1-13.6 1.3-16.5.1-1-.4.9-1.1 1.5-1.2.6-.1 1-.1 1-.1-1.1-.8-7.3 1.6-3.1 2.2 11.3 1.8 20.6-.8 18-2.2z" fill="#e76f00"/><path d="M12.8 15.8s-5.2 1.2-1.8 1.7c1.4.2 4.2.1 6.8-.1 2.1-.2 4.3-.5 4.3-.5s-.8.3-1.3.7c-5.3 1.4-15.5.8-12.6-.7 2.5-1.2 4.6-.9 4.6-.9z" fill="#5482a3"/><path d="M13.3 28.3c5.2.3 13.1-.2 13.3-2.5 0 0-.4 1-4.3 1.7-4.4.9-9.9.8-13.1.2 0 0 .7.5 4.1.6z" fill="#5482a3"/></svg>',
+      'Kotlin': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="kgrad-dd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E44857"/><stop offset="50%" stop-color="#C711E1"/><stop offset="100%" stop-color="#7F52FF"/></linearGradient></defs><rect width="32" height="32" rx="4" fill="url(#kgrad-dd)"/><polygon points="4,4 18,18 4,28" fill="#fff"/><polygon points="18,4 28,4 18,18" fill="#fff"/><polygon points="18,18 28,28 18,28" fill="#fff"/></svg>',
+      'JSON': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="#1a1a1a"/><text x="16" y="21" text-anchor="middle" font-size="11" font-weight="900" font-family="monospace,Arial" fill="#f7df1e">{}</text></svg>',
+      'Minecraft Skript': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect width="32" height="32" rx="4" fill="#4a7c40"/><rect x="6" y="7" width="7" height="7" fill="#1a2a18"/><rect x="19" y="7" width="7" height="7" fill="#1a2a18"/><rect x="11" y="17" width="3" height="3" fill="#1a2a18"/><rect x="18" y="17" width="3" height="3" fill="#1a2a18"/><rect x="6" y="20" width="5" height="3" fill="#1a2a18"/><rect x="21" y="20" width="5" height="3" fill="#1a2a18"/><rect x="11" y="23" width="10" height="3" fill="#1a2a18"/></svg>',
+      'TypeScript': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="3" fill="#3178c6"/><path d="M7 14.5h5.4V16H10v7.5H8.5V16H7zM14.2 22.1c.4.4 1 .7 1.8.7.8 0 1.3-.4 1.3-1 0-.5-.3-.9-1.2-1.2l-.6-.2c-1.4-.5-2-1.2-2-2.3 0-1.4 1.1-2.3 2.7-2.3.8 0 1.5.2 2 .7l-.7 1c-.4-.3-.8-.5-1.3-.5-.7 0-1.1.3-1.1.9 0 .5.3.8 1.1 1.1l.6.2c1.5.5 2.1 1.3 2.1 2.4 0 1.4-1.1 2.4-2.9 2.4-.9 0-1.8-.3-2.4-.9z" fill="#fff"/></svg>',
+      'Pug': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#e44d26"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#f16529"/></svg>',
+      'Markdown': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"/><text x="16" y="21" text-anchor="middle" font-size="12" font-weight="800" font-family="Arial,sans-serif" fill="#1e293b">M↓</text></svg>',
+      'SCSS': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#cf649a"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#df80ab"/></svg>',
+      'Sass': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#1572b6"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#cf649a"/></svg>',
+      'Less': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M5 3l1.8 20.4L16 26l9.2-2.6L27 3z" fill="#2b3f6c"/><path d="M16 24.4V5.2H23.9L22.4 21.5z" fill="#3b5998"/></svg>',
+      'JSX (React)': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="2.6" fill="#61dafb"/><g fill="none" stroke="#61dafb" stroke-width="1.6"><ellipse cx="16" cy="16" rx="12" ry="4.6"/><ellipse cx="16" cy="16" rx="12" ry="4.6" transform="rotate(60 16 16)"/><ellipse cx="16" cy="16" rx="12" ry="4.6" transform="rotate(120 16 16)"/></g></svg>',
+      'CoffeeScript': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="#6f4e37"/><text x="16" y="21" text-anchor="middle" font-size="12" font-weight="800" font-family="Arial,sans-serif" fill="#fff">CS</text></svg>',
+      'Babel': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="#f9dc3e"/><circle cx="16" cy="16" r="9" fill="none" stroke="#323330" stroke-width="1.8"/><circle cx="16" cy="16" r="2" fill="#323330"/></svg>',
+      'LiveScript': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="#499886"/><text x="16" y="21" text-anchor="middle" font-size="11" font-weight="800" font-family="Arial,sans-serif" fill="#fff">LS</text></svg>',
+    };
+
+    let selectedItem = null;
+    let pickerOpen = false;
+
+    function buildList(filter) {
+      const list = document.getElementById('langPickerList');
+      const q = (filter || '').toLowerCase().trim();
+      const langs = LANGS.filter(l => l.type === 'Language' && (!q || l.name.toLowerCase().includes(q) || l.tag.toLowerCase().includes(q)));
+      const prepros = LANGS.filter(l => l.type === 'Preprocessor' && (!q || l.name.toLowerCase().includes(q) || l.tag.toLowerCase().includes(q)));
+
+      list.innerHTML = '';
+
+      if (!langs.length && !prepros.length) {
+        list.innerHTML = '<div class="lang-picker-empty">' + (I18N[currentUILang] || I18N.en).picker_no_results + '</div>';
+        return;
+      }
+
+      function makeItem(item) {
+        const el = document.createElement('div');
+        el.className = 'lang-picker-item' + (selectedItem === item.name ? ' selected' : '');
+        const icon = LANG_ICONS[item.name] || '<svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+        el.innerHTML = `
+          <span class="lang-picker-item-icon">${icon}</span>
+          <div class="lang-picker-item-name">${item.name}</div>
+          <span class="lang-picker-item-tag${item.type === 'Preprocessor' ? ' prepro' : ''}">${item.tag}</span>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        `;
+        el.addEventListener('click', () => selectItem(item.name));
+        return el;
+      }
+
+      if (langs.length) {
+        const g = document.createElement('div');
+        g.className = 'lang-picker-group-label';
+        g.textContent = (I18N[currentUILang] || I18N.en).picker_languages;
+        list.appendChild(g);
+        langs.forEach(l => list.appendChild(makeItem(l)));
+      }
+      if (prepros.length) {
+        const g = document.createElement('div');
+        g.className = 'lang-picker-group-label';
+        g.textContent = (I18N[currentUILang] || I18N.en).picker_preprocessors;
+        list.appendChild(g);
+        prepros.forEach(l => list.appendChild(makeItem(l)));
+      }
+    }
+
+    function selectItem(name) {
+      selectedItem = name;
+      buildList(document.getElementById('langPickerSearch').value);
+      const btn = document.getElementById('createFolderBtn');
+      btn.style.display = 'inline-flex';
+      const indicator = document.getElementById('selectedLangIndicator');
+      const icon = document.getElementById('selectedLangIcon');
+      const nameEl = document.getElementById('selectedLangName');
+      icon.innerHTML = LANG_ICONS[name] || '';
+      nameEl.textContent = name;
+      indicator.style.display = 'flex';
+      closeLangPicker();
+    }
+
+    function toggleLangPicker(e) {
+      e.stopPropagation();
+      pickerOpen ? closeLangPicker() : openLangPicker();
+    }
+
+    function openLangPicker() {
+      pickerOpen = true;
+      document.getElementById('langPickerDropdown').classList.add('open');
+      document.getElementById('langPickerChevron').style.transform = 'rotate(180deg)';
+      document.getElementById('langPickerSearch').value = '';
+      buildList('');
+      setTimeout(() => document.getElementById('langPickerSearch').focus(), 60);
+    }
+
+    function closeLangPicker() {
+      pickerOpen = false;
+      document.getElementById('langPickerDropdown').classList.remove('open');
+      document.getElementById('langPickerChevron').style.transform = 'rotate(0deg)';
+    }
+
+    function filterLangPicker(val) {
+      buildList(val);
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!document.getElementById('langPickerWrap').contains(e.target)) {
+        closeLangPicker();
+      }
+    });
+
+    buildList('');
+  </script>
+</body>
+</html>
