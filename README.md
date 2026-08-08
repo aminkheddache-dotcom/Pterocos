@@ -4,3 +4,5 @@ we support: SQL, PHP, Html Css JS, Lua, Json, Ruby, Python, Rust, Java, c# (.net
 
 # Available at
 https://pterocos.eu.org/
+
+[![Build with Ona](https://ona.com/build-with-ona.svg)](https://app.ona.com/#https://github.com/aminkheddache-dotcom/Pterocos)
