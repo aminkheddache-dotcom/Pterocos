@@ -4,8 +4,7 @@
  * Plugin URI:  https://ptero.pro
  * Description: code with free ai chat at https://ptero.pro/ (no premium plans)
  * Version:     1.6.0
- * Author:      AmineKHD
- * License:     GPL v2 
+ * Author:      AmineKHD 
 
 /**
  * Main plugin class.
